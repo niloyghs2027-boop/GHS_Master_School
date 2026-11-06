@@ -21,10 +21,10 @@
   /* ======================= ✏️ আপনাকে শুধু এই অংশ বদলাতে হবে ======================= */
   const CONFIG = {
     // Google Cloud Console থেকে পাওয়া OAuth Client ID (Web application)
-    CLIENT_ID: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com',
+    CLIENT_ID: '844146152814-eonsr9nage9ajif2dojdviultqmkbafn.apps.googleusercontent.com',
 
     // শুধু এই ইমেইল(গুলো) দিয়ে লগইন করা যাবে (ছোট হাতের অক্ষরে লিখুন)
-    ALLOWED_EMAILS: ['your.email@gmail.com'],
+    ALLOWED_EMAILS: ['niloyghs2027@gmail.com'],
 
     // কাজ না করলে এত মিনিট পর অটো লক হবে (0 = বন্ধ)
     IDLE_LOCK_MINUTES: 30,
