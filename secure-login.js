@@ -1,13 +1,18 @@
 /**
  * ============================================================================
- * SECURE GOOGLE LOGIN + GOOGLE DRIVE AUTO BACKUP  (secure-login.js)
+ * SECURE GOOGLE LOGIN + REAL-TIME MULTI-DEVICE SYNC + ANTI-COPY  (secure-login.js v2)
  * ----------------------------------------------------------------------------
- * - app.js ও index.html-এর কোনো কোড বদলানো হয়নি।
- * - শুধু index.html-এ app.js এর ঠিক পরে এই একটি লাইন যোগ করতে হবে:
- *       <script src="secure-login.js"></script>
- * - শুধুমাত্র নিচের ALLOWED_EMAILS তালিকার Google অ্যাকাউন্ট দিয়ে লগইন করা যাবে।
- * - সব ডাটা (শিক্ষার্থী, নম্বর, হাজিরা, ফি, সেটিংস, ছবি) আপনার Google Drive-এর
- *   গোপন "appDataFolder"-এ অটো ব্যাকআপ হবে এবং নতুন ডিভাইসে লগইন করলে ফিরে আসবে।
+ * index.html-এ app.js এর ঠিক পরে:   <script src="secure-login.js"></script>
+ *
+ * নতুন কী আছে (v2):
+ *  1. রিয়েল-টাইম সিঙ্ক: যেকোনো ডিভাইসে পরিবর্তন করলে কয়েক সেকেন্ডের মধ্যে লগইন থাকা
+ *     অন্য সব ডিভাইসে নিজে থেকেই চলে আসে (প্রতি POLL_SEC সেকেন্ডে Drive পরীক্ষা করে)।
+ *  2. মার্জ-ভিত্তিক সিঙ্ক: দুই ডিভাইসে একসাথে কাজ করলেও কারও ডাটা মুছে যায় না
+ *     (প্রতিটি রেকর্ডের "সর্বশেষ পরিবর্তন" জিতে যায়, ডিলিটও সব ডিভাইসে পৌঁছায়)।
+ *  3. প্রতিটি টেবিল আলাদা ফাইলে — তাই নম্বর/হাজিরা বদলালে ছবি-সহ শিক্ষার্থী ফাইল আবার আপলোড হয় না।
+ *  4. Google-এর পপআপ আর নিজে থেকে "জোর করে" খোলে না: ব্যাকগ্রাউন্ডে শুধু নীরব (prompt:none)
+ *     নবায়নের চেষ্টা হয়; না হলে স্ট্যাটাস বোতামে "পুনরায় সংযোগ" দেখায়, ক্লিক করলে তবেই পপআপ আসে।
+ *  5. কোড কপি/ইনস্পেক্ট প্রতিরোধ (ডোমেইন লক, রাইট-ক্লিক/কপি/ডেভটুলস ব্লক, ফ্রেম-ব্লক)।
  * ============================================================================
  */
 (function () {
@@ -16,28 +21,48 @@
   /* ======================= ✏️ আপনাকে শুধু এই অংশ বদলাতে হবে ======================= */
   const CONFIG = {
     // Google Cloud Console থেকে পাওয়া OAuth Client ID (Web application)
-    CLIENT_ID: '844146152814-eonsr9nage9ajif2dojdviultqmkbafn.apps.googleusercontent.com',
+    CLIENT_ID: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com',
 
     // শুধু এই ইমেইল(গুলো) দিয়ে লগইন করা যাবে (ছোট হাতের অক্ষরে লিখুন)
-    ALLOWED_EMAILS: ['niloyghs2027@gmail.com'],
+    ALLOWED_EMAILS: ['your.email@gmail.com'],
 
     // কাজ না করলে এত মিনিট পর অটো লক হবে (0 = বন্ধ)
     IDLE_LOCK_MINUTES: 30,
 
-    // শেষ পরিবর্তনের কত সেকেন্ড পর অটো ব্যাকআপ শুরু হবে
-    AUTO_BACKUP_DELAY_SEC: 6
+    // পরিবর্তনের কত সেকেন্ড পর Drive-এ আপলোড শুরু হবে
+    AUTO_BACKUP_DELAY_SEC: 3,
+
+    // অন্য ডিভাইসের পরিবর্তন কত সেকেন্ড পর পর খোঁজা হবে (রিয়েল-টাইম ভাব)
+    POLL_SEC: 12,
+
+    // টোকেনের মেয়াদ ফুরানোর আগে নীরবে (পপআপ ছাড়া/ক্লিক ছাড়া) নবায়নের চেষ্টা
+    SILENT_RENEW: true,
+
+    /* ---------- কোড কপি/ইনস্পেক্ট প্রতিরোধ ---------- */
+    PROTECT: {
+      ENABLED: true,
+      // শুধু এই ডোমেইনে অ্যাপ চলবে। যেমন: ['myschool.web.app']  ([] = সব ডোমেইন; localhost/127.0.0.1 সবসময় চলবে)
+      ALLOWED_HOSTS: [],
+      BLOCK_CONTEXT_MENU: true,   // রাইট ক্লিক বন্ধ
+      BLOCK_COPY: true,           // ইনপুট বাদে অন্য জায়গায় কপি/সিলেক্ট/ড্র্যাগ বন্ধ
+      BLOCK_SHORTCUTS: true,      // F12, Ctrl+U, Ctrl+S, Ctrl+Shift+I/J/C বন্ধ
+      BLOCK_DEVTOOLS: true,       // ডেভেলপার টুলস খোলা থাকলে অ্যাপ ঢেকে দেবে (ডেস্কটপ)। নিজে ডিবাগ করতে false করুন
+      BLOCK_IFRAME: true          // অন্য সাইটে iframe-এ বসিয়ে কপি করা বন্ধ
+    },
+
+    DEBUG: false                  // true দিলে window.__SERP চালু হয় (শুধু আপনার টেস্টের জন্য)
   };
   /* =================================================================================== */
 
   const SCOPES = 'openid email profile https://www.googleapis.com/auth/drive.appdata';
   const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
-  const BACKUP_NAME = 'school_erp_backup.json';
-  const STORES = ['students', 'subjects', 'attendance', 'marks', 'qrattendance', 'fees'];
-  const LS = {
-    dirty: 'serp_sync_dirty',
-    mtime: 'serp_sync_drive_mtime',
-    last: 'serp_sync_last_time'
-  };
+  const LEGACY_FILE = 'school_erp_backup.json';           // v1 এর একক ব্যাকআপ ফাইল (পুরোনো ডাটা আনার জন্য)
+  const FILE_PREFIX = 'serp_v2_';
+  const DATA_STORES = ['students', 'subjects', 'attendance', 'marks', 'qrattendance', 'fees'];
+  const ALL_STORES = ['settings'].concat(DATA_STORES);
+  const KEYPATH = { settings: 'id', students: 'recordId', subjects: 'id', attendance: 'id', marks: 'id', qrattendance: 'id', fees: 'id' };
+  const TOMB_KEEP_MS = 90 * 24 * 3600 * 1000;
+  const LS = { dirty: 'serp_sync_dirty_v2', mtime: 'serp_sync_mtime_v2', last: 'serp_sync_last_time', tomb: 'serp_tomb_v2', theme: 'serp_theme' };
 
   const allowed = CONFIG.ALLOWED_EMAILS.map(e => String(e).trim().toLowerCase()).filter(Boolean);
   const configOK = CONFIG.CLIENT_ID && !/^YOUR_/.test(CONFIG.CLIENT_ID) && allowed.length && !allowed.some(e => /^your\./.test(e));
@@ -45,12 +70,82 @@
   /* ----------------------------- ছোট ইউটিলিটি ----------------------------- */
   const $ = (s, r) => (r || document).querySelector(s);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
   const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } };
   const lsDel = k => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } };
+  const jget = (k, d) => { try { const v = JSON.parse(lsGet(k)); return v == null ? d : v; } catch (e) { return d; } };
   const maskEmail = e => { const [u, d] = String(e).split('@'); return (u ? u[0] : '') + '•••' + (u && u.length > 1 ? u.slice(-1) : '') + '@' + (d || ''); };
   const fmtTime = iso => { try { return new Date(iso).toLocaleString('bn-BD'); } catch (e) { return iso || '—'; } };
+  const isEditable = el => !!(el && el.closest && el.closest('input,textarea,select,[contenteditable="true"],[contenteditable=""]'));
+
+  /* ====================================================================================
+   *  কোড কপি / ইনস্পেক্ট প্রতিরোধ
+   *  সত্য কথা: ব্রাউজারে যে কোড চলে তা ১০০% লুকানো যায় না — এগুলো "বাধা" (deterrent), যাতে সাধারণ মানুষ
+   *  সহজে কপি করতে না পারে। আসল সুরক্ষা: ডোমেইন লক + Google লগইন + ডাটা আপনার নিজের Drive-এ।
+   * ==================================================================================== */
+  const Protect = {
+    init() {
+      const P = CONFIG.PROTECT;
+      if (!P || !P.ENABLED) return true;
+      const host = location.hostname;
+      const local = !host || host === 'localhost' || host === '127.0.0.1' || location.protocol === 'file:';
+
+      // ১) ডোমেইন লক — কেউ ফাইল কপি করে নিজের সাইটে চালালে অ্যাপ খুলবে না
+      if (P.ALLOWED_HOSTS && P.ALLOWED_HOSTS.length && !local && !P.ALLOWED_HOSTS.includes(host)) {
+        document.documentElement.innerHTML = '<body style="font:700 16px sans-serif;padding:40px;text-align:center;color:#be123c">⛔ এই ডোমেইন থেকে অ্যাপ চালানোর অনুমতি নেই।</body>';
+        throw new Error('host-locked');
+      }
+      // ২) iframe/ক্লোন এম্বেড বন্ধ
+      if (P.BLOCK_IFRAME && window.top !== window.self) {
+        try { window.top.location = window.self.location; } catch (e) { /* cross-origin */ }
+        document.documentElement.innerHTML = '<body style="font:700 16px sans-serif;padding:40px;text-align:center;color:#be123c">⛔ এই পেজ অন্য সাইটের ভেতরে খোলা যাবে না।</body>';
+        throw new Error('framed');
+      }
+      // ৩) CSS: লেখা সিলেক্ট বন্ধ (ফর্মের ঘর বাদে) — প্রিন্টে কোনো প্রভাব নেই
+      if (P.BLOCK_COPY) {
+        const st = document.createElement('style');
+        st.textContent = 'body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}' +
+          'input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:text}' +
+          'img{-webkit-user-drag:none;user-drag:none}';
+        (document.head || document.documentElement).appendChild(st);
+      }
+      if (P.BLOCK_CONTEXT_MENU) document.addEventListener('contextmenu', e => { if (!isEditable(e.target)) e.preventDefault(); }, true);
+      if (P.BLOCK_COPY) {
+        ['copy', 'cut', 'selectstart', 'dragstart'].forEach(ev =>
+          document.addEventListener(ev, e => { if (!isEditable(e.target)) e.preventDefault(); }, true));
+      }
+      if (P.BLOCK_SHORTCUTS) {
+        document.addEventListener('keydown', e => {
+          const k = String(e.key || '').toLowerCase();
+          const ctrl = e.ctrlKey || e.metaKey;
+          const bad = e.key === 'F12' ||
+            (ctrl && e.shiftKey && ['i', 'j', 'c', 'k'].includes(k)) ||
+            (ctrl && !e.shiftKey && ['u', 's'].includes(k)) ||
+            (e.metaKey && e.altKey && ['i', 'j', 'u'].includes(k));
+          if (bad) { e.preventDefault(); e.stopPropagation(); }
+        }, true);
+      }
+      if (P.BLOCK_DEVTOOLS && !(navigator.maxTouchPoints > 0)) this.watchDevtools();
+      return true;
+    },
+    watchDevtools() {
+      let veil = null;
+      const open = () => {
+        const dw = window.outerWidth - window.innerWidth, dh = window.outerHeight - window.innerHeight;
+        return dw > 220 || dh > 480;                         // ডকড DevTools (পাশে/নিচে) ধরার জন্য নিরাপদ সীমা
+      };
+      setInterval(() => {
+        const o = open();
+        if (o && !veil) {
+          veil = document.createElement('div');
+          veil.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;font:700 16px sans-serif;text-align:center;padding:24px';
+          veil.textContent = '🔒 নিরাপত্তার জন্য ডেভেলপার টুলস বন্ধ করুন, তারপর এই পেজ আবার ব্যবহার করুন।';
+          document.body.appendChild(veil);
+        } else if (!o && veil) { veil.remove(); veil = null; }
+      }, 1000);
+    }
+  };
+  Protect.init();
 
   /* ------------------------------ স্টাইল ------------------------------ */
   function injectStyle() {
@@ -76,6 +171,7 @@
       #serp-pill .dot{width:8px;height:8px;border-radius:50%;background:#94a3b8}
       #serp-pill.ok .dot{background:#34d399}#serp-pill.busy .dot{background:#fbbf24;animation:serpPulse 1s infinite}
       #serp-pill.err .dot{background:#fb7185}#serp-pill.wait .dot{background:#60a5fa}
+      #serp-pill.auth{background:#9a3412;border-color:#fb923c}#serp-pill.auth .dot{background:#fdba74;animation:serpPulse 1s infinite}
       @keyframes serpPulse{50%{opacity:.25}}
       #serp-panel{display:none;position:absolute;left:0;bottom:44px;width:290px;background:#fff;color:#0f172a;border:1px solid #cbd5e1;border-radius:14px;padding:14px;box-shadow:0 18px 40px -12px rgba(0,0,0,.5);font-size:12.5px}
       #serp-panel.open{display:block}
@@ -113,12 +209,139 @@
     });
   }
 
+  /* ====================================================================================
+   *  মার্জ ইঞ্জিন (বিশুদ্ধ ফাংশন — UI/নেটওয়ার্ক ছাড়া, তাই সহজে টেস্ট করা যায়)
+   *  নিয়ম: প্রতিটি রেকর্ডে `_u` (সর্বশেষ পরিবর্তনের সময়)। যার `_u` বেশি সে জেতে।
+   *         ডিলিট হলে "কবরফলক" (tombstone) থাকে; কবরফলকের সময় ≥ রেকর্ডের `_u` হলে রেকর্ড মুছে যায়।
+   * ==================================================================================== */
+  const Merge = {
+    u: r => (r && Number(r._u)) || 0,
+
+    special(store, win, lose) {
+      if (!lose) return win;
+      if (store === 'attendance') {
+        // একই মাসের হাজিরা দুই ডিভাইসে আলাদা শিক্ষার্থীর জন্য নেওয়া হলে দুটোই রাখা
+        const recs = Object.assign({}, win.records || {});
+        let added = false;
+        Object.keys(lose.records || {}).forEach(uid => { if (!(uid in recs)) { recs[uid] = lose.records[uid]; added = true; } });
+        return added ? Object.assign({}, win, { records: recs }) : win;
+      }
+      if (store === 'settings') {
+        const out = Object.assign({}, win);
+        out.sessions = Array.from(new Set([].concat(win.sessions || [], lose.sessions || []))).sort();
+        return out;
+      }
+      return win;
+    },
+
+    /** একটি টেবিলের লোকাল ও রিমোট মার্জ */
+    store(store, localRecs, localTomb, remoteRecs, remoteTomb, now) {
+      const kp = KEYPATH[store];
+      const L = new Map((localRecs || []).filter(Boolean).map(r => [String(r[kp]), r]));
+      const R = new Map((remoteRecs || []).filter(Boolean).map(r => [String(r[kp]), r]));
+      const T = {};
+      [localTomb || {}, remoteTomb || {}].forEach(t => Object.keys(t).forEach(k => { T[k] = Math.max(T[k] || 0, Number(t[k]) || 0); }));
+
+      const out = new Map(), toPut = [], toDel = [];
+      let remoteChanged = false;
+      const keys = new Set([...L.keys(), ...R.keys()]);
+
+      keys.forEach(k => {
+        const l = L.get(k), r = R.get(k);
+        let pick, fromRemote = false;
+        if (l && r) {
+          const ul = this.u(l), ur = this.u(r);
+          if (ur > ul) { pick = this.special(store, r, l); fromRemote = true; }
+          else if (ul > ur) { pick = this.special(store, l, r); }
+          else { pick = this.special(store, l, r); }
+        } else if (l) { pick = l; }
+        else { pick = r; fromRemote = true; }
+
+        const t = T[k] || 0;
+        if (t && t >= this.u(pick)) {                      // মুছে ফেলা হয়েছে
+          if (l) toDel.push(k);
+          if (r) remoteChanged = true;
+          return;
+        }
+        out.set(k, pick);
+
+        if (!l) toPut.push(pick);                          // শুধু রিমোটে ছিল
+        else if (fromRemote) toPut.push(pick);             // রিমোট নতুন
+        else if (l !== pick) toPut.push(pick);             // স্পেশাল মার্জে লোকাল বদলেছে
+
+        if (!r) remoteChanged = true;                      // শুধু লোকালে ছিল
+        else if (!fromRemote && (this.u(l) > this.u(r) || pick !== l)) remoteChanged = true;
+        else if (fromRemote && pick !== r) remoteChanged = true;
+      });
+
+      // কবরফলক ছাঁটাই: জীবিত রেকর্ডের চেয়ে পুরোনো বা ৯০ দিনের বেশি পুরোনো সরানো
+      const tomb = {};
+      Object.keys(T).forEach(k => {
+        if (out.has(k)) return;                              // রেকর্ড আবার জীবিত → কবরফলক অপ্রয়োজনীয়
+        if ((now || Date.now()) - T[k] > TOMB_KEEP_MS) return;  // ৯০ দিনের বেশি পুরোনো
+        tomb[k] = T[k];
+      });
+      Object.keys(tomb).forEach(k => { if ((remoteTomb || {})[k] == null || remoteTomb[k] < tomb[k]) remoteChanged = true; });
+
+      return { records: Array.from(out.values()), tomb, toPut, toDel, localChanged: !!(toPut.length || toDel.length), remoteChanged };
+    }
+  };
+
+  /* ====================================================================================
+   *  লোকাল ট্র্যাকিং: `_u` স্ট্যাম্প + কবরফলক + "ময়লা" (dirty) চিহ্ন
+   * ==================================================================================== */
+  const Track = {
+    last: 0,
+    stamp() { const n = Date.now(); this.last = n > this.last ? n : this.last + 1; return this.last; },
+    tomb: jget(LS.tomb, {}),
+    saveTomb() { lsSet(LS.tomb, JSON.stringify(this.tomb)); },
+    addTomb(store, key) { (this.tomb[store] = this.tomb[store] || {})[String(key)] = this.stamp(); this.saveTomb(); },
+    dropTomb(store, key) { if (this.tomb[store] && this.tomb[store][String(key)] != null) { delete this.tomb[store][String(key)]; this.saveTomb(); } },
+    dirtySet() { return new Set(jget(LS.dirty, [])); },
+    markDirty(store) { const s = this.dirtySet(); if (s.has(store)) return; s.add(store); lsSet(LS.dirty, JSON.stringify([...s])); },
+    isDirty() { return this.dirtySet().size > 0; }
+  };
+
+  // মূল (র') মেথডগুলো ধরে রাখা — সিঙ্ক নিজে লিখলে এগুলো ব্যবহার করবে (স্ট্যাম্প/ট্র্যাকিং ছাড়া)
+  const RAW = {
+    put: LocalDB.prototype.put, bulkPut: LocalDB.prototype.bulkPut,
+    delete: LocalDB.prototype.delete, clear: LocalDB.prototype.clear
+  };
+
+  LocalDB.prototype.put = async function (store, item) {
+    if (item && typeof item === 'object' && KEYPATH[store]) { item._u = Track.stamp(); Track.dropTomb(store, item[KEYPATH[store]]); }
+    const r = await RAW.put.apply(this, arguments);
+    Sync.markDirty(store);
+    return r;
+  };
+  LocalDB.prototype.bulkPut = async function (store, items) {
+    if (Array.isArray(items) && KEYPATH[store]) items.forEach(it => { if (it && typeof it === 'object') { it._u = Track.stamp(); Track.dropTomb(store, it[KEYPATH[store]]); } });
+    const r = await RAW.bulkPut.apply(this, arguments);
+    Sync.markDirty(store);
+    return r;
+  };
+  LocalDB.prototype.delete = async function (store, key) {
+    if (KEYPATH[store]) Track.addTomb(store, key);
+    const r = await RAW.delete.apply(this, arguments);
+    Sync.markDirty(store);
+    return r;
+  };
+  LocalDB.prototype.clear = async function (store) {
+    if (KEYPATH[store]) {
+      try { (await this.getAll(store)).forEach(r => Track.addTomb(store, r[KEYPATH[store]])); } catch (e) { /* ignore */ }
+    }
+    const r = await RAW.clear.apply(this, arguments);
+    Sync.markDirty(store);
+    return r;
+  };
+
   /* ============================== GOOGLE AUTH ============================== */
   const Auth = {
     token: null,
     expiresAt: 0,
     email: null,
     tokenClient: null,
+    lastSilentTry: 0,
 
     loadGIS() {
       return new Promise((resolve, reject) => {
@@ -139,21 +362,21 @@
       });
     },
 
-    /** GIS থেকে টোকেন আনে, তারপর Google-এর tokeninfo দিয়ে যাচাই করে (ইমেইল, ক্লায়েন্ট, স্কোপ) */
+    /**
+     * টোকেন আনে এবং Google-এর tokeninfo দিয়ে যাচাই করে (ইমেইল, ক্লায়েন্ট, স্কোপ)।
+     * prompt = 'select_account' → ব্যবহারকারীর ক্লিকে (ইন্টারঅ্যাকটিভ)
+     * prompt = 'none'           → নীরব নবায়ন (কোনো স্ক্রিন দেখায় না; ব্যর্থ হলে error)
+     */
     async acquire(prompt) {
       await this.loadGIS();
       const resp = await new Promise((resolve, reject) => {
         if (!this.tokenClient) {
-          this.tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: CONFIG.CLIENT_ID,
-            scope: SCOPES,
-            callback: () => {}
-          });
+          this.tokenClient = google.accounts.oauth2.initTokenClient({ client_id: CONFIG.CLIENT_ID, scope: SCOPES, callback: () => {} });
         }
         this.tokenClient.callback = r => (r && r.error) ? reject(new Error(r.error_description || r.error)) : resolve(r);
         this.tokenClient.error_callback = e => reject(new Error((e && (e.message || e.type)) || 'popup_error'));
         const opts = { prompt: prompt };
-        if (allowed.length === 1) opts.hint = allowed[0];
+        if (this.email) opts.hint = this.email; else if (allowed.length === 1) opts.hint = allowed[0];
         this.tokenClient.requestAccessToken(opts);
       });
 
@@ -177,19 +400,27 @@
         err.denied = true;
         throw err;
       }
-      // একই সেশনে অন্য অ্যাকাউন্টে বদল হলে অস্বীকার
-      if (this.email && this.email !== email) throw new Error('সেশনের অ্যাকাউন্ট বদল হয়েছে। পুনরায় লগইন করুন।');
+      if (this.email && this.email !== email) {
+        try { google.accounts.oauth2.revoke(resp.access_token, () => {}); } catch (e) { /* ignore */ }
+        throw new Error('সেশনের অ্যাকাউন্ট বদল হয়েছে। পুনরায় লগইন করুন।');
+      }
 
       this.token = resp.access_token;
       this.email = email;
-      this.expiresAt = Date.now() + (Number(resp.expires_in || info.expires_in || 3600) - 60) * 1000;
+      this.expiresAt = Date.now() + (Number(resp.expires_in || info.expires_in || 3600) - 90) * 1000;
       return email;
     },
 
+    /** ব্যাকগ্রাউন্ড কাজের জন্য: কখনোই ইউজারকে বিরক্ত করে এমন পপআপ/অ্যাকাউন্ট-সিলেক্ট খোলে না */
     async validToken() {
       if (this.token && Date.now() < this.expiresAt) return this.token;
-      await this.acquire('');                 // নীরব নবায়নের চেষ্টা (সম্ভব না হলে error)
-      return this.token;
+      if (CONFIG.SILENT_RENEW && Date.now() - this.lastSilentTry > 120000 && !document.hidden) {
+        this.lastSilentTry = Date.now();
+        try { await this.acquire('none'); return this.token; } catch (e) { /* নীরব নবায়ন হয়নি */ }
+      }
+      const err = new Error('reauth_required');
+      err.reauth = true;
+      throw err;
     },
 
     clear() { this.token = null; this.expiresAt = 0; }
@@ -213,7 +444,7 @@
             <span>Google অ্যাকাউন্ট দিয়ে লগইন</span>
           </button>
           <div class="msg" id="serp-msg"></div>
-          <div class="foot">🔒 লগইনের পর আপনার সব তথ্য আপনার নিজের Google Drive-এ নিরাপদে অটো ব্যাকআপ হবে।</div>
+          <div class="foot">🔒 লগইনের পর আপনার সব তথ্য আপনার নিজের Google Drive-এ নিরাপদে সিঙ্ক হবে এবং লগইন করা সব ডিভাইসে আপডেট থাকবে।</div>
         </div>`;
       document.body.appendChild(el);
       const btn = $('#serp-login-btn', el);
@@ -243,12 +474,12 @@
 
   /* ============================== GOOGLE DRIVE ============================== */
   const Drive = {
-    async req(url, opts, retry) {
+    async req(url, opts) {
       const token = await Auth.validToken();
       const res = await fetch(url, Object.assign({}, opts, {
         headers: Object.assign({ Authorization: 'Bearer ' + token }, (opts && opts.headers) || {})
       }));
-      if (res.status === 401 && !retry) { Auth.expiresAt = 0; return this.req(url, opts, true); }
+      if (res.status === 401) { Auth.expiresAt = 0; const e = new Error('reauth_required'); e.reauth = true; throw e; }
       if (!res.ok) {
         const t = await res.text().catch(() => '');
         throw new Error('Drive ত্রুটি ' + res.status + (t ? ': ' + t.slice(0, 160) : ''));
@@ -256,11 +487,14 @@
       return res;
     },
 
-    async findFile() {
-      const q = encodeURIComponent(`name='${BACKUP_NAME}' and trashed=false`);
-      const res = await this.req(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${q}&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,name,modifiedTime,size)`);
+    /** appDataFolder-এর সব ফাইল (নাম → সর্বশেষ ফাইল) — একটিই হালকা রিকোয়েস্ট */
+    async listAll() {
+      const q = encodeURIComponent('trashed=false');
+      const res = await this.req(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${q}&orderBy=modifiedTime%20desc&pageSize=100&fields=files(id,name,modifiedTime,size)`);
       const j = await res.json();
-      return (j.files && j.files[0]) || null;
+      const map = {};
+      (j.files || []).forEach(f => { if (!map[f.name]) map[f.name] = f; });
+      return map;
     },
 
     async download(id) {
@@ -268,15 +502,14 @@
       return res.text();
     },
 
-    async upload(existingId, jsonText) {
-      const meta = existingId ? { name: BACKUP_NAME } : { name: BACKUP_NAME, parents: ['appDataFolder'] };
+    async upload(existingId, name, jsonText) {
+      const meta = existingId ? { name } : { name, parents: ['appDataFolder'] };
       const fields = 'id,modifiedTime';
       const method = existingId ? 'PATCH' : 'POST';
       const base = 'https://www.googleapis.com/upload/drive/v3/files' + (existingId ? '/' + existingId : '');
       const bytes = new Blob([jsonText]).size;
 
       if (bytes > 4 * 1024 * 1024) {
-        // বড় ফাইলের জন্য resumable আপলোড
         const init = await this.req(`${base}?uploadType=resumable&fields=${fields}`, {
           method,
           headers: { 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': 'application/json' },
@@ -300,88 +533,87 @@
     }
   };
 
-  /* ============================ ডাটা বিল্ড / রিস্টোর ============================ */
-  async function buildPayload() {
-    const db = App.db;
-    const payload = {
-      meta: { app: 'SchoolERP_BD_v5', exportedAt: new Date().toISOString(), source: 'drive-autosync', schema: 1 },
-      settings: await db.get('settings', 'main') || App.settings
-    };
-    for (const s of STORES) payload[s] = await db.getAll(s);
-    return payload;
+  /* ============================ লোকাল ডাটা পড়া/লেখা ============================ */
+  async function readStore(store) {
+    if (store === 'settings') { const s = await App.db.get('settings', 'main'); return s ? [s] : []; }
+    return App.db.getAll(store);
   }
 
   async function localHasData() {
-    const db = App.db;
-    const st = await db.get('settings', 'main');
+    const st = await App.db.get('settings', 'main');
     if (st && (st.nameBn || st.nameEn || st.eiin)) return true;
     for (const s of ['students', 'marks', 'attendance', 'fees', 'qrattendance']) {
-      if ((await db.getAll(s)).length) return true;
+      if ((await App.db.getAll(s)).length) return true;
     }
     return false;
   }
 
-  async function applyPayload(data) {
-    if (!data || typeof data !== 'object' || !data.meta || data.meta.app !== 'SchoolERP_BD_v5') {
-      throw new Error('ব্যাকআপ ফাইলের ফরম্যাট সঠিক নয়।');
-    }
-    Sync.suspended = true;
-    try {
-      if (data.settings) await App.db.put('settings', data.settings);
-      for (const s of STORES) {
-        if (Array.isArray(data[s])) {
-          await App.db.clear(s);
-          await App.db.bulkPut(s, data[s]);
-        }
+  /** মার্জের ফলাফল লোকাল IndexedDB-তে বসানো (স্ট্যাম্প/ট্র্যাকিং এড়িয়ে — মূল মেথড দিয়ে) */
+  async function writeLocal(store, toPut, toDel) {
+    const db = App.db;
+    if (toDel.length) for (const k of toDel) await RAW.delete.call(db, store, store === 'settings' ? 'main' : k);
+    if (toPut.length) {
+      if (store === 'settings') {
+        const cur = await db.get('settings', 'main');
+        const next = Object.assign({}, toPut[0]);
+        if (cur) { next.theme = cur.theme; next.activeSession = cur.activeSession; }       // এগুলো প্রতি ডিভাইসের নিজস্ব
+        if (Array.isArray(next.sessions) && next.activeSession && !next.sessions.includes(next.activeSession)) next.sessions = next.sessions.concat(next.activeSession).sort();
+        await RAW.put.call(db, 'settings', next);
       }
-    } finally { Sync.suspended = false; }
+      else await RAW.bulkPut.call(db, store, toPut);
+    }
+  }
+
+  /** ম্যানুয়াল সম্পূর্ণ রিস্টোর: লোকাল ডাটা Drive-এর ডাটা দিয়ে প্রতিস্থাপন */
+  async function replaceLocalStore(store, records) {
+    const db = App.db;
+    if (store === 'settings') { if (records[0]) await RAW.put.call(db, 'settings', records[0]); return; }
+    await RAW.clear.call(db, store);
+    if (records.length) await RAW.bulkPut.call(db, store, records);
   }
 
   async function downloadLocalSnapshot(prefix) {
-    const p = await buildPayload();
+    const p = { meta: { app: 'SchoolERP_BD_v5', exportedAt: new Date().toISOString(), source: 'local-snapshot', schema: 2 }, settings: await App.db.get('settings', 'main') || App.settings };
+    for (const s of DATA_STORES) p[s] = await App.db.getAll(s);
     const blob = new Blob([JSON.stringify(p)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `${prefix}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`;
     document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-  }
-
-  async function refreshUIAfterRestore() {
-    await App.loadAllFromDB();
-    if (App.applyTheme) App.applyTheme(App.settings.theme || 'light');
-    App.renderSessionSelectors();
-    App.bindSettingUI();
-    App.syncAllUI();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
   }
 
   /* ============================== সিঙ্ক ইঞ্জিন ============================== */
   const Sync = {
-    suspended: false,
     enabled: false,
-    timer: null,
+    appReady: false,
+    paused: false,            // লক স্ক্রিনে থাকলে true
     running: false,
     again: false,
-    seq: 0,
-    conflict: false,
+    timer: null,
+    pollTimer: null,
     needAuth: false,
     state: 'idle',
     lastError: '',
+    pendingUI: false,
+    lastToast: 0,
 
-    isDirty() { return lsGet(LS.dirty) === '1'; },
+    mtimes() { return jget(LS.mtime, {}); },
+    setMtime(store, v) { const m = this.mtimes(); m[store] = v; lsSet(LS.mtime, JSON.stringify(m)); },
 
-    markDirty() {
-      if (!this.enabled || this.suspended) return;
-      this.seq++;
-      lsSet(LS.dirty, '1');
+    isDirty() { return Track.isDirty(); },
+
+    markDirty(store) {
+      Track.markDirty(store);
+      if (!this.enabled) return;
       this.setState('wait');
       this.schedule(CONFIG.AUTO_BACKUP_DELAY_SEC * 1000);
     },
 
     schedule(ms) {
       clearTimeout(this.timer);
-      this.timer = setTimeout(() => this.push(), ms);
+      this.timer = setTimeout(() => this.cycle(), ms);
     },
 
     setState(s, err) {
@@ -390,132 +622,178 @@
       UI.refresh();
     },
 
-    /** লোকাল → Drive */
-    async push(force) {
-      if (!this.enabled || this.conflict) return false;
+    startPolling() {
+      clearInterval(this.pollTimer);
+      const tick = () => {
+        if (!this.enabled || this.paused || this.needAuth || this.running) return;
+        if (this.pendingUI && this.appReady && !(App.isUserEditing && App.isUserEditing())) this.refreshUI();
+        this.cycle({ poll: true });
+      };
+      this.pollTimer = setInterval(tick, Math.max(5, CONFIG.POLL_SEC) * 1000);
+    },
+
+    /** একটি পূর্ণ সিঙ্ক রাউন্ড: Drive-এর পরিবর্তন টানা → মার্জ → লোকালে বসানো → আপলোড */
+    async cycle(opts) {
+      opts = opts || {};
+      if (!this.enabled || this.paused) return false;
       if (this.running) { this.again = true; return false; }
-      if (!navigator.onLine) { this.setState('err', 'ইন্টারনেট নেই — সংযোগ ফিরলে অটো সিঙ্ক হবে'); return false; }
+      if (!navigator.onLine) { if (!opts.poll) this.setState('err', 'ইন্টারনেট নেই — সংযোগ ফিরলে অটো সিঙ্ক হবে'); return false; }
+      if (this.needAuth && !opts.manual) return false;
       this.running = true;
       clearTimeout(this.timer);
-      const seqAtStart = this.seq;
-      this.setState('busy');
+      let localChanged = false;
       try {
-        const remote = await Drive.findFile();
-        const baseline = lsGet(LS.mtime);
-        if (remote && baseline && remote.modifiedTime !== baseline && !force) {
-          // অন্য ডিভাইস থেকে Drive-এর ডাটা বদলেছে
-          this.conflict = true;
-          this.running = false;
-          this.setState('err', 'Drive-এ নতুন ডাটা পাওয়া গেছে (অন্য ডিভাইস থেকে)');
-          await this.resolveConflict();
-          return false;
-        }
-        const text = JSON.stringify(await buildPayload());
-        const out = await Drive.upload(remote ? remote.id : null, text);
-        lsSet(LS.mtime, out.modifiedTime);
-        lsSet(LS.last, new Date().toISOString());
-        if (this.seq === seqAtStart) lsDel(LS.dirty);
+        if (!opts.poll) this.setState('busy');
+        const files = await Drive.listAll();
         this.needAuth = false;
-        this.setState('ok');
+        const mt = this.mtimes();
+        const dirty = Track.dirtySet();
+        const legacy = files[LEGACY_FILE];
+        const hasAnyV2 = ALL_STORES.some(s => files[FILE_PREFIX + s + '.json']);
+        let legacyData = null;
+
+        // v1 এর পুরোনো একক ব্যাকআপ থেকে একবার ডাটা আনা (নতুন ফাইল এখনো নেই এমন অবস্থায়)
+        if (!hasAnyV2 && legacy && !jget('serp_legacy_done', false)) {
+          try { legacyData = JSON.parse(await Drive.download(legacy.id)); } catch (e) { legacyData = null; }
+          if (!legacyData || !legacyData.meta || legacyData.meta.app !== 'SchoolERP_BD_v5') legacyData = null;
+        }
+
+        for (const store of ALL_STORES) {
+          const name = FILE_PREFIX + store + '.json';
+          const rf = files[name];
+          const needPull = !!rf && rf.modifiedTime !== mt[store];
+          let needPush = dirty.has(store) || !!opts.force;
+          const seqDirty = dirty.has(store);
+
+          let remoteRecs = null, remoteTomb = {};
+          if (needPull) {
+            const j = JSON.parse(await Drive.download(rf.id));
+            if (!j || !Array.isArray(j.records)) throw new Error('Drive-এর ' + store + ' ফাইলের ফরম্যাট সঠিক নয়');
+            remoteRecs = j.records; remoteTomb = j.tombstones || {};
+          } else if (!rf && legacyData) {
+            remoteRecs = store === 'settings' ? (legacyData.settings ? [legacyData.settings] : []) : (Array.isArray(legacyData[store]) ? legacyData[store] : []);
+            needPush = true;                                       // নতুন ফরম্যাটে ফাইল তৈরি করতে হবে
+          }
+
+          const localRecs = await readStore(store);
+          if (!rf && !legacyData && localRecs.length) needPush = true;   // Drive-এ নেই, লোকালে আছে
+
+          if (!remoteRecs && !needPush) continue;                   // কিছুই করার নেই
+
+          let outRecs = localRecs, outTomb = Track.tomb[store] || {}, remoteChanged = true;
+          if (remoteRecs) {
+            const m = Merge.store(store, localRecs, Track.tomb[store] || {}, remoteRecs, remoteTomb, Date.now());
+            if (m.localChanged) { await writeLocal(store, m.toPut, m.toDel); localChanged = true; }
+            outRecs = m.records; outTomb = m.tomb; remoteChanged = m.remoteChanged || needPush || !rf;
+            Track.tomb[store] = m.tomb; Track.saveTomb();
+          }
+
+          if (remoteChanged || opts.force) {
+            const payload = { schema: 2, store, savedAt: new Date().toISOString(), records: outRecs, tombstones: outTomb };
+            const up = await Drive.upload(rf ? rf.id : null, name, JSON.stringify(payload));
+            this.setMtime(store, up.modifiedTime);
+          } else if (rf) {
+            this.setMtime(store, rf.modifiedTime);
+          }
+          if (seqDirty) { const d = Track.dirtySet(); d.delete(store); lsSet(LS.dirty, JSON.stringify([...d])); }
+        }
+
+        if (legacyData) lsSet('serp_legacy_done', 'true');
+        lsSet(LS.last, new Date().toISOString());
+        // সিঙ্ক চলার সময় নতুন লেখা পড়লে (dirty ফিরে এলে) আবার শিডিউল
+        if (Track.isDirty()) this.schedule(1500);
+        this.setState(Track.isDirty() ? 'wait' : 'ok');
+        if (localChanged) this.onRemoteChanges();
         return true;
       } catch (e) {
         this.handleError(e);
         return false;
       } finally {
         this.running = false;
-        if (this.again) { this.again = false; this.schedule(1000); }
+        if (this.again) { this.again = false; this.schedule(800); }
       }
     },
 
     handleError(e) {
       const m = (e && e.message) || String(e);
-      if (/popup|access_denied|immediate_failed|interaction_required|login_required|consent|অ্যাকাউন্ট বদল/i.test(m)) {
+      if ((e && e.reauth) || /reauth_required|popup|access_denied|immediate_failed|interaction_required|login_required|consent|অ্যাকাউন্ট বদল/i.test(m)) {
         this.needAuth = true;
-        this.setState('err', 'Drive সংযোগ নবায়ন দরকার — নিচের বোতামে ক্লিক করুন');
+        this.setState('err', 'Drive সংযোগের মেয়াদ শেষ — নিচের স্ট্যাটাস বোতামে ক্লিক করে পুনরায় সংযোগ করুন (ডাটা এই ডিভাইসে নিরাপদ আছে)');
       } else {
         this.setState('err', m);
-        this.schedule(60000); // ১ মিনিট পর আবার চেষ্টা
+        this.schedule(30000);
       }
     },
 
-    /** Drive → লোকাল (ম্যানুয়াল বা লগইনের সময়) */
-    async pullAndApply() {
-      const remote = await Drive.findFile();
-      if (!remote) throw new Error('Drive-এ কোনো ব্যাকআপ পাওয়া যায়নি।');
-      const data = JSON.parse(await Drive.download(remote.id));
-      await applyPayload(data);
-      lsSet(LS.mtime, remote.modifiedTime);
-      lsSet(LS.last, new Date().toISOString());
+    /** অন্য ডিভাইসের পরিবর্তন লোকালে বসানো হয়েছে → স্ক্রিন আপডেট (কেউ গ্রিডে কাজ করছে হলে অপেক্ষা) */
+    onRemoteChanges() {
+      if (!this.appReady) return;
+      if (App.isUserEditing && App.isUserEditing()) { this.pendingUI = true; return; }
+      this.refreshUI();
+    },
+
+    async refreshUI() {
+      this.pendingUI = false;
+      try {
+        await App.loadAllFromDB();
+        App.renderSessionSelectors();
+        const ae = document.activeElement;
+        if (!(ae && ae.closest && ae.closest('#school-settings-form'))) App.bindSettingUI();
+        App.syncAllUI();
+        const fl = document.getElementById('fee-ledger-modal');
+        if (fl && !fl.classList.contains('hidden') && App.renderFeeLedger) App.renderFeeLedger();
+        if (App.activeTab === 'qratt' && App.renderQrAttendance && !App._qrStream) App.renderQrAttendance();
+        if (App.renderFeeMultiList) { try { App.renderFeeMultiList(); } catch (e) { /* ignore */ } }
+        if (Date.now() - this.lastToast > 15000 && App.toast) { this.lastToast = Date.now(); App.toast('☁ অন্য ডিভাইসের নতুন তথ্য সিঙ্ক হয়েছে'); }
+      } catch (e) { console.error(e); }
+    },
+
+    /** Drive থেকে সম্পূর্ণ রিস্টোর (লোকাল প্রতিস্থাপন) — ম্যানুয়াল */
+    async restoreAll() {
+      const files = await Drive.listAll();
+      let any = false;
+      for (const store of ALL_STORES) {
+        const rf = files[FILE_PREFIX + store + '.json'];
+        if (!rf) continue;
+        any = true;
+        const j = JSON.parse(await Drive.download(rf.id));
+        if (!j || !Array.isArray(j.records)) throw new Error('ব্যাকআপ ফাইলের ফরম্যাট সঠিক নয়।');
+        await replaceLocalStore(store, j.records);
+        Track.tomb[store] = j.tombstones || {};
+        this.setMtime(store, rf.modifiedTime);
+      }
+      if (!any) {
+        const legacy = files[LEGACY_FILE];
+        if (!legacy) throw new Error('Drive-এ কোনো ব্যাকআপ পাওয়া যায়নি।');
+        const data = JSON.parse(await Drive.download(legacy.id));
+        if (!data || !data.meta || data.meta.app !== 'SchoolERP_BD_v5') throw new Error('ব্যাকআপ ফাইলের ফরম্যাট সঠিক নয়।');
+        await replaceLocalStore('settings', data.settings ? [data.settings] : []);
+        for (const s of DATA_STORES) if (Array.isArray(data[s])) await replaceLocalStore(s, data[s]);
+      }
+      Track.saveTomb();
       lsDel(LS.dirty);
-      return remote;
-    },
-
-    async resolveConflict() {
-      const choice = await askChoice(
-        '⚠ ডাটা সংঘাত',
-        'এই ডিভাইসের ডাটা এবং Google Drive-এর ডাটা ভিন্ন।\n\n• Drive-এর ডাটা নিলে এই ডিভাইসের ডাটা বদলে যাবে (বদলানোর আগে এই ডিভাইসের একটি ব্যাকআপ ফাইল ডাউনলোড হবে)।\n• এই ডিভাইসের ডাটা রাখলে Drive-এর ডাটা ওভাররাইট হবে।',
-        [
-          { value: 'drive', label: '☁ Drive-এর ডাটা নিন (এই ডিভাইসে রিস্টোর)', bg: '#10b981', fg: '#052e16' },
-          { value: 'local', label: '💻 এই ডিভাইসের ডাটা রাখুন (Drive ওভাররাইট)', bg: '#fbbf24', fg: '#451a03' }
-        ]
-      );
-      this.conflict = false;
-      if (choice === 'drive') {
-        this.setState('busy');
-        try {
-          await downloadLocalSnapshot('Local_Before_DriveRestore');
-          await this.pullAndApply();
-          await refreshUIAfterRestore();
-          this.setState('ok');
-          App.toast && App.toast('Drive থেকে ডাটা রিস্টোর হয়েছে!');
-        } catch (e) { this.handleError(e); }
-      } else {
-        await this.push(true);
-      }
+      lsSet(LS.last, new Date().toISOString());
     },
 
     /** লগইনের ঠিক পর, অ্যাপ চালুর আগে একবার */
     async initialSync() {
       await App.db.init();
       this.enabled = true;
-      try {
-        this.setState('busy');
-        const remote = await Drive.findFile();
-        const has = await localHasData();
-        const baseline = lsGet(LS.mtime);
-        const dirty = this.isDirty();
+      const has = await localHasData();
+      this.setState('busy');
+      // নতুন ডিভাইস/খালি লোকাল: প্রথমে Drive-এর সব ডাটা টেনে আনা
+      if (!has) lsDel(LS.mtime);
+      await this.cycle({ manual: true });
+      this.startPolling();
+    },
 
-        if (!remote) {
-          if (has) { lsSet(LS.dirty, '1'); }
-        } else if (!has) {
-          await this.pullAndApply();                       // নতুন ডিভাইস → অটো রিস্টোর
-          App.__serpRestored = true;
-        } else if (baseline === remote.modifiedTime) {
-          /* সিঙ্কে আছে */
-        } else if (!baseline || dirty) {
-          // সংঘাত — ব্যবহারকারী সিদ্ধান্ত নেবেন (UI লোডের পর নয়, এখনই)
-          const choice = await askChoice(
-            '⚠ ডাটা সংঘাত',
-            'এই ডিভাইসের ডাটা এবং Google Drive-এর ডাটা ভিন্ন। কোনটি রাখবেন?\n(Drive-এর ডাটা নিলে এই ডিভাইসের ডাটার একটি ব্যাকআপ ফাইল আগে ডাউনলোড হবে।)',
-            [
-              { value: 'drive', label: '☁ Drive-এর ডাটা নিন', bg: '#10b981', fg: '#052e16' },
-              { value: 'local', label: '💻 এই ডিভাইসের ডাটা রাখুন (Drive ওভাররাইট)', bg: '#fbbf24', fg: '#451a03' }
-            ]);
-          if (choice === 'drive') {
-            await downloadLocalSnapshot('Local_Before_DriveRestore');
-            await this.pullAndApply();
-          } else {
-            lsSet(LS.mtime, remote.modifiedTime); // বেসলাইন ধরে নিয়ে ওভাররাইট
-            lsSet(LS.dirty, '1');
-          }
-        } else {
-          await this.pullAndApply();                       // Drive নতুন, লোকাল পরিষ্কার → রিস্টোর
-        }
-        this.setState(this.isDirty() ? 'wait' : 'ok');
-        if (this.isDirty()) this.schedule(2500);
-      } catch (e) {
-        this.handleError(e);
-      }
+    /** নতুন শিক্ষার্থী/রশিদ তৈরির ঠিক আগে — অন্য ডিভাইসে একই আইডি/নম্বর তৈরি হওয়া ঠেকাতে */
+    async pullNow() {
+      if (!this.enabled || this.paused || this.needAuth || !navigator.onLine) return;
+      try {
+        await Promise.race([this.cycle({ poll: true }), new Promise(r => setTimeout(r, 4000))]);
+        if (this.appReady && App.loadAllFromDB) await App.loadAllFromDB();
+      } catch (e) { /* ignore */ }
     }
   };
 
@@ -532,29 +810,40 @@
         <div id="serp-panel">
           <div class="row">👤 <b id="serp-p-mail"></b></div>
           <div class="row">☁ শেষ সিঙ্ক: <b id="serp-p-last">—</b></div>
+          <div class="row" style="color:#475569">🔄 অন্য ডিভাইসের পরিবর্তন প্রতি ${Math.max(5, CONFIG.POLL_SEC)} সেকেন্ডে আসে</div>
           <div class="row" id="serp-p-err" style="color:#be123c;display:none"></div>
-          <button class="b1" id="serp-b-sync" type="button">⟳ এখনই Drive-এ ব্যাকআপ</button>
-          <button class="b2" id="serp-b-restore" type="button">⬇ Drive থেকে রিস্টোর</button>
+          <button class="b1" id="serp-b-sync" type="button">⟳ এখনই সিঙ্ক করুন</button>
+          <button class="b2" id="serp-b-restore" type="button">⬇ Drive থেকে সম্পূর্ণ রিস্টোর</button>
           <button class="b3" id="serp-b-logout" type="button">⎋ লগআউট</button>
           <button class="b4" id="serp-b-wipe" type="button">🧹 লগআউট ও এই ডিভাইস থেকে ডাটা মুছুন</button>
         </div>
         <div id="serp-pill" class="wait" role="button" tabindex="0"><span class="dot"></span><span id="serp-pill-t">Drive</span></div>`;
       document.body.appendChild(w);
       this.el = w;
-      $('#serp-pill', w).onclick = () => { $('#serp-panel', w).classList.toggle('open'); UI.refresh(); };
+
+      const reconnect = async () => {
+        try { await Auth.acquire('select_account'); Sync.needAuth = false; Sync.setState('busy'); await Sync.cycle({ manual: true }); }
+        catch (e) { Sync.handleError(e); }
+      };
+      $('#serp-pill', w).onclick = () => {
+        if (Sync.needAuth) return reconnect();                // ইউজারের ক্লিক = পপআপ খোলার অনুমতি
+        $('#serp-panel', w).classList.toggle('open'); UI.refresh();
+      };
       $('#serp-b-sync', w).onclick = async () => {
-        if (Sync.needAuth) { try { await Auth.acquire('select_account'); Sync.needAuth = false; } catch (e) { Sync.handleError(e); return; } }
-        await Sync.push(true);
+        if (Sync.needAuth) return reconnect();
+        await Sync.cycle({ manual: true, force: true });
       };
       $('#serp-b-restore', w).onclick = async () => {
-        const c = await askChoice('Drive থেকে রিস্টোর', 'এই ডিভাইসের বর্তমান ডাটা Drive-এর ডাটা দিয়ে বদলে যাবে। (আগে একটি ব্যাকআপ ফাইল ডাউনলোড হবে)', [
+        const c = await askChoice('Drive থেকে সম্পূর্ণ রিস্টোর', 'এই ডিভাইসের বর্তমান ডাটা Drive-এর ডাটা দিয়ে সম্পূর্ণ বদলে যাবে। (আগে একটি ব্যাকআপ ফাইল ডাউনলোড হবে)', [
           { value: 'y', label: 'হ্যাঁ, রিস্টোর করুন', bg: '#f59e0b', fg: '#451a03' }, { value: 'n', label: 'বাতিল' }]);
         if (c !== 'y') return;
         try {
+          if (Sync.needAuth) await Auth.acquire('select_account');
+          Sync.needAuth = false;
           Sync.setState('busy');
           await downloadLocalSnapshot('Local_Before_DriveRestore');
-          await Sync.pullAndApply();
-          await refreshUIAfterRestore();
+          await Sync.restoreAll();
+          await Sync.refreshUI();
           Sync.setState('ok');
           App.toast && App.toast('Drive থেকে ডাটা রিস্টোর হয়েছে!');
         } catch (e) { Sync.handleError(e); }
@@ -566,8 +855,13 @@
     refresh() {
       if (!this.el) return;
       const pill = $('#serp-pill', this.el), t = $('#serp-pill-t', this.el);
-      const map = { ok: ['ok', '☁ Drive: সিঙ্ক হয়েছে'], busy: ['busy', '☁ সিঙ্ক হচ্ছে…'], wait: ['wait', '☁ ব্যাকআপ অপেক্ষমান'], err: ['err', '☁ সিঙ্ক ত্রুটি'], idle: ['wait', '☁ Drive'] };
-      const m = map[Sync.state] || map.idle;
+      let key = Sync.state;
+      if (Sync.needAuth) key = 'auth';
+      const map = {
+        ok: ['ok', '☁ সিঙ্ক হয়েছে'], busy: ['busy', '☁ সিঙ্ক হচ্ছে…'], wait: ['wait', '☁ আপলোড অপেক্ষমান'],
+        err: ['err', '☁ সিঙ্ক ত্রুটি'], auth: ['auth', '🔑 পুনরায় সংযোগ করুন'], idle: ['wait', '☁ Drive']
+      };
+      const m = map[key] || map.idle;
       pill.className = m[0]; t.textContent = m[1];
       $('#serp-p-mail', this.el).textContent = Auth.email || '';
       const last = lsGet(LS.last);
@@ -598,15 +892,19 @@
     async lock() {
       if (this.locked) return;
       this.locked = true;
-      if (Sync.isDirty()) { try { await Sync.push(); } catch (e) { /* ignore */ } }
+      Sync.paused = true;
+      if (Sync.isDirty() && !Sync.needAuth) { Sync.paused = false; try { await Sync.cycle(); } catch (e) { /* ignore */ } Sync.paused = true; }
       const prev = Auth.email;
       Auth.clear();
       Auth.email = prev;               // একই অ্যাকাউন্টেই আবার খুলতে হবে
       const w = $('#serp-widget'); if (w) w.style.display = 'none';
       await showLoginScreen('lock');
       this.locked = false;
+      Sync.paused = false;
+      Sync.needAuth = false;
       if (w) w.style.display = '';
       UI.refresh();
+      Sync.cycle({ manual: true });
       this.startIdleWatchReset();
     },
     startIdleWatchReset() { clearTimeout(this.idleTimer); if (CONFIG.IDLE_LOCK_MINUTES) this.idleTimer = setTimeout(() => this.lock(), CONFIG.IDLE_LOCK_MINUTES * 60000); },
@@ -618,12 +916,18 @@
         if (c !== 'y') return;
       }
       Sync.setState('busy');
-      const ok = Sync.isDirty() || wipe ? await Sync.push(true) : true;
-      if (wipe && !ok) { App.toast && App.toast('Drive-এ সেভ করা যায়নি — তাই ডাটা মোছা হয়নি।', 'error'); return; }
+      let ok = true;
+      if (Sync.isDirty() || wipe) {
+        if (Sync.needAuth) { try { await Auth.acquire('select_account'); Sync.needAuth = false; } catch (e) { ok = false; } }
+        if (ok) ok = await Sync.cycle({ manual: true, force: !!wipe });
+      }
+      if (wipe && !ok) { Sync.setState('err', 'Drive-এ সেভ করা যায়নি'); App.toast && App.toast('Drive-এ সেভ করা যায়নি — তাই ডাটা মোছা হয়নি।', 'error'); return; }
+      Sync.enabled = false;
+      clearInterval(Sync.pollTimer);
       if (wipe) {
         try { App.db.db && App.db.db.close(); } catch (e) { /* ignore */ }
         await new Promise(res => { const r = indexedDB.deleteDatabase(DB_NAME); r.onsuccess = r.onerror = r.onblocked = () => res(); setTimeout(res, 1500); });
-        [LS.dirty, LS.mtime, LS.last].forEach(lsDel);
+        [LS.dirty, LS.mtime, LS.last, LS.tomb, LS.theme, 'serp_legacy_done'].forEach(lsDel);
       }
       try { if (Auth.token) google.accounts.oauth2.revoke(Auth.token, () => {}); } catch (e) { /* ignore */ }
       Auth.clear();
@@ -631,33 +935,30 @@
     }
   };
 
-  /* ================== LocalDB-এর লেখার মেথডগুলোতে "পরিবর্তন হয়েছে" ট্র্যাকিং ================== */
-  ['put', 'bulkPut', 'delete', 'clear'].forEach(m => {
-    const orig = LocalDB.prototype[m];
-    LocalDB.prototype[m] = async function () {
-      const r = await orig.apply(this, arguments);
-      Sync.markDirty();
-      return r;
-    };
-  });
-
   window.addEventListener('beforeunload', e => {
-    if (Sync.enabled && Sync.isDirty() && !Sync.suspended && Sync.state !== 'ok') { e.preventDefault(); e.returnValue = ''; }
+    if (Sync.enabled && Sync.isDirty() && Sync.state !== 'ok') { e.preventDefault(); e.returnValue = ''; }
   });
-  window.addEventListener('online', () => { if (Sync.enabled && Sync.isDirty()) Sync.schedule(1500); });
-  document.addEventListener('visibilitychange', () => { if (document.hidden && Sync.enabled && Sync.isDirty()) Sync.push(); });
+  window.addEventListener('online', () => { if (Sync.enabled) Sync.cycle({ manual: true }); });
+  document.addEventListener('visibilitychange', () => {
+    if (!Sync.enabled) return;
+    if (document.hidden) { if (Sync.isDirty()) Sync.cycle(); }
+    else Sync.cycle({ poll: true });                         // ট্যাবে ফিরলেই সঙ্গে সঙ্গে নতুন তথ্য আনা
+  });
+  window.addEventListener('focus', () => { if (Sync.enabled) Sync.cycle({ poll: true }); });
 
   /* ======================= App.init কে লগইনের পেছনে আটকে দেওয়া ======================= */
   const originalInit = App.init;
   let started = false;
+  App.syncBeforeWrite = () => Sync.pullNow();
   App.init = async function () {
     if (started) return;
     started = true;
     injectStyle();
     try {
       await showLoginScreen('login');         // লগইন না হলে এখানেই আটকে থাকবে — অ্যাপ লোডই হবে না
-      await Sync.initialSync();                // Drive ↔ লোকাল মেলানো / নতুন ডিভাইসে রিস্টোর
+      await Sync.initialSync();                // Drive ↔ লোকাল মার্জ / নতুন ডিভাইসে রিস্টোর
       await originalInit.apply(App, arguments);
+      Sync.appReady = true;
       UI.mount();
       UI.refresh();
       Session.startIdleWatch();
@@ -667,6 +968,7 @@
     }
   };
 
-  // ডিবাগ/টেস্টের জন্য (সংবেদনশীল কিছু নয়)
-  window.__SERP = { Sync, Auth, Drive, CONFIG };
+  // ভেতরের অবজেক্ট (টোকেন-সহ) সাধারণত বাইরে খোলা থাকে না। শুধু টেস্ট/ডিবাগে চালু করুন।
+  if (CONFIG.DEBUG) window.__SERP = { Sync, Auth, Drive, Merge, Track, CONFIG };
+  if (window.__SERP_TEST) window.__SERP_TEST_API = { Merge, Track, KEYPATH, Sync, Auth, Drive };
 })();

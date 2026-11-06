@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * SMART SCHOOL ERP & RESULT PROCESSING SYSTEM v5.0 PRO (FIXED EDITION)
- * FILE: app.js (PART 1 OF 3)
+ * FILE: app.js (PART 1 OF 3) — v5.1 SECURE/REALTIME EDITION
  * Core DB, NCTB Separate Papers (Bangla/English 1st & 2nd), Auto-Sync & Students
  * ============================================================================
  */
@@ -188,7 +188,8 @@ const App = {
   async init() {
     await this.db.init();
     await this.loadAllFromDB();
-    this.applyTheme(this.settings.theme || 'light');
+    let localTheme = null; try { localTheme = localStorage.getItem('serp_theme'); } catch (e) { /* ignore */ }
+    this.applyTheme(localTheme || this.settings.theme || 'light');
     this.renderSessionSelectors();
     this.bindSettingUI();
 
@@ -283,10 +284,24 @@ const App = {
       if (typeof this.populateSingleStudentDropdown === 'function') this.populateSingleStudentDropdown();
     }
     if (this.activeTab === 'results' && typeof this.processAndRenderResults === 'function') this.processAndRenderResults();
-    if (this.activeTab === 'promotion' && typeof this.previewPromotion === 'function') this.previewPromotion();
+    if (this.activeTab === 'promotion' && typeof this.previewPromotion === 'function' && !this._promoEdited) this.previewPromotion();
     if (this.activeTab === 'agecalc' && typeof this.renderAgeCalculatorTable === 'function') this.renderAgeCalculatorTable();
     if (this.activeTab === 'certificates' && typeof this.populateCertificateStudents === 'function') this.populateCertificateStudents();
   },
+
+  /**
+   * ব্যবহারকারী এই মুহূর্তে কোনো গ্রিডে/ফর্মে কাজ করছেন কি? (হ্যাঁ হলে অন্য ডিভাইসের আপডেট এসে স্ক্রিন রিসেট করবে না)
+   */
+  isUserEditing() {
+    if (this._attDirty || this._markDirty || this._promoEdited) return true;
+    const m = document.getElementById('quick-mark-modal');
+    if (m && !m.classList.contains('hidden')) return true;
+    const ae = document.activeElement;
+    if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.closest('#bulk-mark-table, #att-table, #promo-table, #quick-modal-table, #student-form')) return true;
+    return false;
+  },
+  /** লেখার আগে Drive থেকে সর্বশেষ ডাটা টেনে আনার হুক (secure-login.js এটি বসায়) */
+  async syncBeforeWrite() { /* no-op */ },
 
   /* ==================== COLLAPSIBLE SIDEBAR & THEME ==================== */
   toggleSidebar() {
@@ -297,7 +312,8 @@ const App = {
     const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
     this.applyTheme(next);
     this.settings.theme = next;
-    this.db.put('settings', this.settings);
+    // থিম প্রতিটি ডিভাইসের নিজস্ব পছন্দ — তাই Drive সিঙ্কে পাঠানো হয় না
+    try { localStorage.setItem('serp_theme', next); } catch (e) { /* ignore */ }
   },
 
   applyTheme(mode) {
@@ -503,14 +519,45 @@ const App = {
     return this._dialog({ message, defaultValue, input: true, ...opts });
   },
 
+  /* ---- পিন এখন সাধারণ লেখা হিসেবে নয়, SHA-256 হ্যাশ করে সংরক্ষিত হয় ---- */
+  async hashPin(pin) {
+    pin = String(pin);
+    if (!(window.crypto && crypto.subtle)) return pin;                 // পুরোনো/অনিরাপদ ব্রাউজারে ফলব্যাক
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('SERP|v1|' + pin));
+    return 'sha256$' + Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  },
+  async verifyPin(input) {
+    const stored = String(this.settings.pin || '');
+    if (!stored) return true;
+    if (stored.startsWith('sha256$')) return (await this.hashPin(input)) === stored;
+    if (input === stored) {                                            // পুরোনো প্লেইন পিন → মিলে গেলে হ্যাশে আপগ্রেড
+      this.settings.pin = await this.hashPin(input);
+      try { await this.db.put('settings', this.settings); } catch (e) { /* ignore */ }
+      return true;
+    }
+    return false;
+  },
+  _pinFails: 0,
+  _pinLockUntil: 0,
   async checkAdminPin() {
     if (!this.settings.pin) return true;
+    const wait = Math.ceil((this._pinLockUntil - Date.now()) / 1000);
+    if (wait > 0) { this.toast(`অনেকবার ভুল পিন! ${wait} সেকেন্ড পর আবার চেষ্টা করুন।`, 'error'); return false; }
     const input = await this.promptBox('নিরাপত্তা যাচাইকরণ: অনুগ্রহ করে অ্যাডমিন পিন (PIN) লিখুন:', '', {
       title: 'অ্যাডমিন পিন', icon: '🔒', password: true, placeholder: 'পিন নম্বর', confirmText: 'যাচাই করুন'
     });
-    if (input !== null && input === this.settings.pin) return true;
+    if (input !== null && await this.verifyPin(input)) { this._pinFails = 0; return true; }
+    if (input !== null && ++this._pinFails >= 5) { this._pinFails = 0; this._pinLockUntil = Date.now() + 30000; }
     this.toast(input === null ? 'অ্যাকশন বাতিল করা হয়েছে।' : 'ভুল পিন নম্বর! অ্যাকশন বাতিল করা হয়েছে।', input === null ? 'warn' : 'error');
     return false;
+  },
+  async clearAdminPin() {
+    if (!this.settings.pin) return this.toast('কোনো পিন সেট করা নেই।', 'warn');
+    if (!(await this.checkAdminPin())) return;
+    this.settings.pin = '';
+    await this.db.put('settings', this.settings);
+    this.bindSettingUI();
+    this.toast('অ্যাডমিন পিন সরানো হয়েছে।', 'warn');
   },
 
   switchTab(tabId) {
@@ -669,7 +716,18 @@ const App = {
     document.getElementById('set-eiin').value = this.settings.eiin || '';
     document.getElementById('set-estd').value = this.settings.estd || '';
     document.getElementById('set-address').value = this.settings.address || '';
-    document.getElementById('set-pin').value = this.settings.pin || '';
+    const pinEl = document.getElementById('set-pin');
+    pinEl.value = '';                                         // হ্যাশ/পিন কখনোই ফর্মে দেখানো হয় না
+    pinEl.placeholder = this.settings.pin ? '•••• (পরিবর্তন করতে নতুন পিন লিখুন, খালি রাখলে আগেরটাই থাকবে)' : 'পিন সেট করতে লিখুন (ঐচ্ছিক)';
+    if (!document.getElementById('set-pin-clear')) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.id = 'set-pin-clear';
+      b.className = 'mt-1 text-[11px] font-bold text-rose-600 underline';
+      b.textContent = 'বর্তমান পিন সরান';
+      b.onclick = () => App.clearAdminPin();
+      pinEl.insertAdjacentElement('afterend', b);
+    }
+    document.getElementById('set-pin-clear').style.display = this.settings.pin ? '' : 'none';
 
     document.getElementById('nav-school-name').textContent = this.settings.nameBn || 'প্রতিষ্ঠানের নাম সেট করুন';
     document.getElementById('nav-eiin').textContent = this.settings.eiin || '—';
@@ -692,7 +750,12 @@ const App = {
     if (!file) return;
     const dataUrl = await this.compressImage(file, 320, 180, 0.9, true);
     this.settings[key] = dataUrl;
+    // আগে ফর্মের না-সেভ-করা লেখা হারিয়ে যেত — এখন ছবি বদলের সাথে ফর্মের তথ্যও রেখে দেওয়া হয়
+    const keep = ['set-name-bn', 'set-name-en', 'set-eiin', 'set-estd', 'set-address', 'set-pin'].map(id => [id, document.getElementById(id).value]);
     this.bindSettingUI();
+    keep.forEach(([id, v]) => { if (id !== 'set-pin' || v) document.getElementById(id).value = v; });
+    if (key === 'logo') { const nl = document.getElementById('nav-school-logo'); if (nl) { nl.src = dataUrl; nl.classList.remove('hidden'); } }
+    this.toast('ছবি বসানো হয়েছে — "সংরক্ষণ" চাপলে স্থায়ী হবে।', 'warn');
   },
 
   async saveSettings(event) {
@@ -702,7 +765,11 @@ const App = {
     this.settings.eiin = document.getElementById('set-eiin').value.trim();
     this.settings.estd = document.getElementById('set-estd').value.trim();
     this.settings.address = document.getElementById('set-address').value.trim();
-    this.settings.pin = document.getElementById('set-pin').value.trim();
+    const newPin = document.getElementById('set-pin').value.trim();
+    if (newPin) {
+      if (this.settings.pin && !(await this.checkAdminPin())) return;      // পিন বদলাতে পুরোনো পিন লাগবে
+      this.settings.pin = await this.hashPin(newPin);
+    }
 
     await this.db.put('settings', this.settings);
     this.bindSettingUI();
@@ -858,6 +925,7 @@ const App = {
 
   async saveStudent(event) {
     event.preventDefault();
+    await this.syncBeforeWrite();
     const editRecordId = document.getElementById('stu-edit-id').value;
     const cls = document.getElementById('stu-class').value;
     const group = document.getElementById('stu-group').value;
@@ -1034,19 +1102,19 @@ const App = {
           <td class="font-mono font-extrabold text-blue-700 dark:text-blue-400">${s.uid}</td>
           <td class="font-extrabold text-center text-sm">${s.roll}</td>
           <td>
-            <div class="font-bold">${s.nameBn}</div>
-            <div class="text-slate-500 text-[11px]">${s.nameEn}</div>
+            <div class="font-bold">${this.esc(s.nameBn)}</div>
+            <div class="text-slate-500 text-[11px]">${this.esc(s.nameEn)}</div>
           </td>
           <td>
             <span class="font-bold">${CLASS_LABELS_BN[s.cls]}</span><br/>
             <span class="text-indigo-600 dark:text-indigo-400 font-semibold">${GROUP_LABELS_BN[s.group]}</span>
           </td>
           <td>
-            <div>পিতা: ${s.father}</div>
-            <div>মাতা: ${s.mother}</div>
+            <div>পিতা: ${this.esc(s.father)}</div>
+            <div>মাতা: ${this.esc(s.mother)}</div>
           </td>
           <td>
-            <div class="font-mono font-semibold">📞 ${s.mobile}</div>
+            <div class="font-mono font-semibold">📞 ${this.esc(s.mobile)}</div>
             <div class="text-rose-500 font-bold text-[11px]">রক্ত: ${s.blood || '-'} | জন্ম: ${s.dob || '-'}</div>
             <div class="text-[11px]">${ageBadge}</div>
           </td>
@@ -1472,7 +1540,7 @@ Object.assign(App, {
       return `
         <tr data-uid="${s.uid}">
           <td class="font-bold text-center">${s.roll}</td>
-          <td class="whitespace-nowrap font-semibold">${s.nameBn}</td>
+          <td class="whitespace-nowrap font-semibold">${this.esc(s.nameBn)}</td>
           ${dayCells}
           <td class="text-center font-bold stu-work-days">${workDays}</td>
           <td class="text-center font-extrabold text-emerald-600 stu-pres-days">${pCount}</td>
@@ -1501,6 +1569,7 @@ Object.assign(App, {
     const cur = td.textContent.trim();
     const next = order[(order.indexOf(cur) + 1) % order.length];
     td.textContent = next;
+    this._attDirty = true;
     td.className = `att-cell cursor-pointer text-center text-[11px] select-none ` +
       (next === 'P' ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold' :
        next === 'A' ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300 font-extrabold' :
@@ -1552,6 +1621,7 @@ Object.assign(App, {
     });
 
     await this.db.put('attendance', { id: attId, session: this.session, cls, grp, month, records });
+    this._attDirty = false;
     this.attendance = await this.db.getAll('attendance');
     this.syncAllUI();
     this.toast('মাসিক হাজিরা সফলভাবে সংরক্ষিত ও সিঙ্ক হয়েছে!');
@@ -1650,7 +1720,7 @@ Object.assign(App, {
       8: { cols: 2, rows: 4, fs: 9,    qr: 22, notes: false }
     };
     const L = LAYOUTS[perPage] || LAYOUTS[6];
-    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
     const cell = (s) => {
       // "ID:" দিয়ে শুরু — তাই মডিউল ১১ (QR স্ক্যান হাজিরা) এই কোড সরাসরি পড়তে পারবে।
@@ -2060,6 +2130,7 @@ Object.assign(App, {
   },
 
   onStrictMarkInput(inputEl, mode = 'bulk') {
+    if (mode === 'bulk') this._markDirty = true;
     const maxAllowed = Number(inputEl.dataset.max || 0);
     const passLimit = Number(inputEl.dataset.pass || 0);
     const label = inputEl.dataset.label || 'নম্বর';
@@ -2174,6 +2245,7 @@ Object.assign(App, {
     for (const id of clearIds) await this.db.delete('marks', id);
     await this.db.bulkPut('marks', items);
     this.marks = await this.db.getAll('marks');
+    this._markDirty = false;
     this.updateSubjectPassFailBanner();
     this.syncAllUI();
     this.toast(`${items.length} জন শিক্ষার্থীর নম্বর সফলভাবে সংরক্ষিত ও সিঙ্ক হয়েছে!`);
@@ -2185,7 +2257,7 @@ Object.assign(App, {
     const list = this.getFilteredStudents(cls, grp);
     const sel = document.getElementById('smk-student');
     if (!sel) return;
-    sel.innerHTML = list.map(s => `<option value="${s.uid}">রোল ${s.roll} - ${s.nameBn} (${GROUP_LABELS_BN[s.group]})</option>`).join('');
+    sel.innerHTML = list.map(s => `<option value="${s.uid}">রোল ${s.roll} - ${this.esc(s.nameBn)} (${GROUP_LABELS_BN[s.group]})</option>`).join('');
     this.loadSingleStudentMarks();
   },
 
@@ -2887,7 +2959,7 @@ Object.assign(App, {
           </td>
           <td class="text-center font-bold">${r.stu.roll}</td>
           <td class="font-mono font-bold text-blue-700 dark:text-blue-400">${r.stu.uid}</td>
-          <td class="font-bold">${r.stu.nameBn}</td>
+          <td class="font-bold">${this.esc(r.stu.nameBn)}</td>
           <td class="text-center font-extrabold">${r.totalMarks} / ${r.totalFullMarks} (${r.percentage}%)</td>
           ${isNineTen ? `<td class="text-center">${r.gpaWithout4th.toFixed(2)}</td>` : ''}
           <td class="text-center font-extrabold text-sm">${r.gpa.toFixed(2)}</td>
@@ -2957,7 +3029,7 @@ Object.assign(App, {
         <tr>
           <td class="text-center font-bold">${r.stu.roll}</td>
           <td class="font-semibold whitespace-nowrap">
-            ${r.stu.nameBn}<div class="font-mono text-[9px] text-slate-500">${r.stu.uid}</div>
+            ${this.esc(r.stu.nameBn)}<div class="font-mono text-[9px] text-slate-500">${r.stu.uid}</div>
             <button onclick="App.openQuickMarkModal('${r.stu.uid}')" class="no-print text-blue-600 dark:text-blue-400 font-extrabold text-[10px] underline ml-1">✏️ এডিট</button>
           </td>
           ${cells}
@@ -3204,13 +3276,13 @@ Object.assign(App, {
           <div class="flex items-center justify-between border-b-2 border-blue-800 pb-2 gap-3">
             <div class="flex flex-col items-center">
               ${this.settings.logo ? `<img src="${this.settings.logo}" class="ms-logo" />` : `<div class="w-16"></div>`}
-              <span class="ms-eiin">EIIN: ${this.settings.eiin}</span>
+              <span class="ms-eiin">EIIN: ${this.esc(this.settings.eiin)}</span>
             </div>
 
             <div class="text-center flex-1 px-2">
-              <h1 class="ms-school-name">${this.settings.nameBn}</h1>
-              <p class="ms-school-en">${this.settings.nameEn}</p>
-              <p class="ms-school-addr">${this.settings.address} • স্থাপিত: ${this.settings.estd}</p>
+              <h1 class="ms-school-name">${this.esc(this.settings.nameBn)}</h1>
+              <p class="ms-school-en">${this.esc(this.settings.nameEn)}</p>
+              <p class="ms-school-addr">${this.esc(this.settings.address)} • স্থাপিত: ${this.esc(this.settings.estd)}</p>
 
               <div class="ms-title">
                 <div class="font-extrabold text-[15px] text-amber-200 tracking-wide">একাডেমিক ট্রান্সক্রিপ্ট ও প্রগতিপত্র</div>
@@ -3237,14 +3309,14 @@ Object.assign(App, {
           <div style="background: rgba(255,255,255,0.55);"
                class="flex justify-between items-center gap-3 p-2 border border-blue-300 rounded-xl">
             <div class="grid grid-cols-3 gap-x-4 gap-y-1.5 flex-1 text-[12.5px]">
-              <div><strong>শিক্ষার্থীর নাম:</strong> <span class="font-extrabold text-blue-950">${s.nameBn}</span></div>
-              <div><strong>Name (English):</strong> <span class="font-bold text-slate-800">${s.nameEn}</span></div>
+              <div><strong>শিক্ষার্থীর নাম:</strong> <span class="font-extrabold text-blue-950">${this.esc(s.nameBn)}</span></div>
+              <div><strong>Name (English):</strong> <span class="font-bold text-slate-800">${this.esc(s.nameEn)}</span></div>
               <div><strong>ইউনিক আইডি:</strong> <span class="font-mono font-extrabold text-blue-700">${s.uid}</span></div>
-              <div><strong>পিতার নাম:</strong> ${s.father}</div>
-              <div><strong>মাতার নাম:</strong> ${s.mother}</div>
+              <div><strong>পিতার নাম:</strong> ${this.esc(s.father)}</div>
+              <div><strong>মাতার নাম:</strong> ${this.esc(s.mother)}</div>
               <div><strong>শ্রেণী ও বিভাগ:</strong> <span class="font-bold text-indigo-900">${CLASS_LABELS_BN[s.cls]} (${GROUP_LABELS_BN[s.group]})</span></div>
               <div><strong>শ্রেণী রোল:</strong> <span class="font-extrabold bg-amber-200 text-slate-950 px-2 py-0.2 rounded">${s.roll}</span></div>
-              <div><strong>জন্ম তারিখ ও রক্ত:</strong> ${s.dob || '-'} ${s.blood ? `(${s.blood})` : ''}</div>
+              <div><strong>জন্ম তারিখ ও রক্ত:</strong> ${s.dob || '-'} ${s.blood ? `(${this.esc(s.blood)})` : ''}</div>
               <div><strong>মেধাক্রম (Merit):</strong> <span class="font-extrabold ${r.passed ? 'text-emerald-700' : 'text-rose-600'}">${r.passed ? `মেধাক্রম #${r.meritPos} (মোট ${totalStudentsInClass} জনে)` : 'অকৃতকার্য (Failed)'}</span></div>
             </div>
             <img src="${s.photo || ''}" class="w-[76px] h-[92px] object-cover border-2 border-blue-800 rounded-lg shadow-sm bg-white" />
@@ -3444,6 +3516,7 @@ Object.assign(App, {
 
   /* ==================== MODULE 8: CHECKBOX-BASED SELECTIVE NEXT-CLASS PROMOTION (FIXED & ADDED) ==================== */
   previewPromotion(filterMode = 'PASSED') {
+    this._promoEdited = false;
     const fromCls = document.getElementById('promo-from-class')?.value || '6';
     const fromGrp = document.getElementById('promo-from-group')?.value || 'General';
     const toCls = String(Number(fromCls) + 1);
@@ -3493,7 +3566,7 @@ Object.assign(App, {
           </td>
           <td class="text-center font-bold">${r.stu.roll}</td>
           <td class="font-mono font-bold text-blue-700 dark:text-blue-400">${r.stu.uid}</td>
-          <td class="font-bold">${r.stu.nameBn}</td>
+          <td class="font-bold">${this.esc(r.stu.nameBn)}</td>
           <td class="text-center font-extrabold">${r.totalMarks} (${r.percentage}%)</td>
           <td class="text-center font-extrabold ${r.passed ? 'text-emerald-600' : 'text-rose-600'}">
             ${r.passed ? `${r.gpa.toFixed(2)} (${r.lg}) • মেধাক্রম #${r.meritPos}` : `F (${r.failedCount} বিষয়ে ফেল)`}
@@ -3532,6 +3605,7 @@ Object.assign(App, {
   },
 
   onPromoCheckChange() {
+    this._promoEdited = true;
     this.selectedPromotionUIDs.clear();
     let rollSeq = 1;
     document.querySelectorAll('#promo-table tbody tr').forEach(tr => {
@@ -3612,6 +3686,7 @@ Object.assign(App, {
     }
 
     await this.db.bulkPut('students', toSave);
+    this._promoEdited = false;
     this.students = await this.db.getAll('students');
     this.renderSessionSelectors();
     this.syncAllUI();
@@ -3685,7 +3760,7 @@ Object.assign(App, {
         <tr>
           <td class="text-center font-bold">${s.roll}</td>
           <td class="font-mono font-bold text-blue-700 dark:text-blue-400">${s.uid}</td>
-          <td class="font-bold">${s.nameBn}</td>
+          <td class="font-bold">${this.esc(s.nameBn)}</td>
           <td class="text-center">${CLASS_LABELS_BN[s.cls]} (${GROUP_LABELS_BN[s.group]})</td>
           <td class="text-center">
             <input type="date" value="${s.dob || ''}" onchange="App.updateStudentDOBInline('${s.recordId}', this.value)" class="modern-input text-xs font-mono py-1 px-2" />
@@ -4144,8 +4219,8 @@ Object.assign(App, {
     const a = document.createElement('a');
     a.href = url;
     a.download = `School_Full_Backup_${this.settings.eiin}_${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);      // সাথে সাথে revoke করলে কিছু ব্রাউজারে ডাউনলোড ফেল করত
     this.toast('সম্পূর্ণ ডাটাবেস ব্যাকআপ (.JSON) ডাউনলোড সম্পন্ন হয়েছে!');
   },
 
@@ -4160,7 +4235,10 @@ Object.assign(App, {
     reader.onload = async (e) => {
       try {
         const data = JSON.parse(e.target.result);
-        if (data.settings) await this.db.put('settings', data.settings);
+        if (!data || typeof data !== 'object' || !data.meta || data.meta.app !== 'SchoolERP_BD_v5') {
+          throw new Error('format');
+        }
+        if (data.settings) { data.settings.id = 'main'; await this.db.put('settings', data.settings); }
         if (Array.isArray(data.students)) {
           await this.db.clear('students');
           await this.db.bulkPut('students', data.students);
@@ -4186,6 +4264,7 @@ Object.assign(App, {
           await this.db.bulkPut('fees', data.fees);
         }
         await this.loadAllFromDB();
+        this.applyTheme(this.settings.theme || 'light');
         this.renderSessionSelectors();
         this.bindSettingUI();
         this.syncAllUI();
@@ -4204,8 +4283,8 @@ Object.assign(App, {
         <div class="flex items-center justify-center gap-3">
           ${this.settings.logo ? `<img src="${this.settings.logo}" class="w-12 h-12 object-contain" />` : ''}
           <div>
-            <h1 class="text-lg font-extrabold text-blue-950">${this.settings.nameBn}</h1>
-            <p class="text-xs text-slate-600">${this.settings.address} | EIIN: ${this.settings.eiin}</p>
+            <h1 class="text-lg font-extrabold text-blue-950">${this.esc(this.settings.nameBn)}</h1>
+            <p class="text-xs text-slate-600">${this.esc(this.settings.address)} | EIIN: ${this.esc(this.settings.eiin)}</p>
           </div>
         </div>
         <div class="mt-1 font-bold text-xs bg-blue-50 text-blue-950 inline-block px-4 py-1 rounded-lg border border-blue-300">
@@ -4278,7 +4357,7 @@ Object.assign(App, {
     box.dataset.landscape = landscape ? '1' : '0';
   },
   esc(v) {
-    return String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   },
   bnNum(n) {
     return String(n).replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[d]);
@@ -4721,6 +4800,7 @@ Object.assign(App, {
   /* ---------- সংরক্ষণ ও প্রিন্ট ---------- */
   async saveFeePayments(doPrint = false) {
     if (this._feeBusy) return;
+    await this.syncBeforeWrite();
     const ctx = this.getFeeContext();
     let targets = this.getFeeTargets();
     if (!targets.length) return this.toast(ctx.mode === 'multi' ? 'তালিকা থেকে অন্তত একজন শিক্ষার্থী টিক দিন!' : 'প্রথমে একজন শিক্ষার্থী নির্বাচন করুন!', 'error');
