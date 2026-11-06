@@ -1,0 +1,1946 @@
+<!DOCTYPE html>
+<html lang="bn" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>স্মার্ট স্কুল ইআরপি ও রেজাল্ট প্রসেসিং সিস্টেম v5.0 (৬ষ্ঠ - ১০ম শ্রেণী)</title>
+
+  <!-- Google Fonts: Noto Sans Bengali & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Serif+Bengali:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Noto Sans Bengali','Hind Siliguri',  'Plus Jakarta Sans', 'sans-serif']
+          },
+          colors: {
+            blue:   {50:'#effafb',100:'#d6f1f4',200:'#b0e2e9',300:'#7ccbd8',400:'#3fabbd',500:'#218fa3',600:'#187487',700:'#175e6e',800:'#184d5a',900:'#173f4a',950:'#0b2830'},
+            indigo: {50:'#f2f5f8',100:'#e1e8ef',200:'#c5d1de',300:'#9db0c6',400:'#7189a6',500:'#546d8c',600:'#2f5d6b',700:'#244c58',800:'#1d3e49',900:'#163039',950:'#0d1f26'}
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- SheetJS (Excel Import/Export) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- QRCode.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
+  <!-- JsBarcode -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+  <style>
+    :root {
+      --bg-main: #f0f4fd;
+      --card-bg: rgba(255, 255, 255, 0.96);
+      --card-border: #dbeafe;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --input-bg: #ffffff;
+      --input-border: #cbd5e1;
+      --sidebar-width: 280px;
+    }
+
+    html.dark {
+      --bg-main: #0b1120;
+      --card-bg: rgba(15, 23, 42, 0.92);
+      --card-border: #1e3a8a;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --input-bg: #1e293b;
+      --input-border: #334155;
+    }
+
+    * {
+      font-family: 'Noto Sans Bengali', 'Plus Jakarta Sans', sans-serif;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: radial-gradient(circle at top right, #e0e7ff 0%, var(--bg-main) 55%, #ecfdf5 100%);
+      color: var(--text-main);
+      transition: background-color 0.3s ease, color 0.3s ease;
+      overflow-x: hidden;
+    }
+
+    html.dark body {
+      background: radial-gradient(circle at top right, #1e1b4b 0%, #0b1120 65%, #064e3b 100%);
+    }
+
+    .royal-topbar {
+      background: linear-gradient(125deg, #1d4ed8 0%, #4338ca 50%, #0d9488 100%);
+    }
+
+    .royal-sidebar {
+      background: linear-gradient(180deg, #1e3a8a 0%, #312e81 60%, #115e59 100%);
+      width: var(--sidebar-width);
+      transition: all 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    body.sidebar-collapsed .royal-sidebar {
+      margin-left: calc(var(--sidebar-width) * -1);
+    }
+
+    .side-nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      width: 100%;
+      text-align: left;
+      padding: 10px 13px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #e0e7ff;
+      transition: all 0.22s ease;
+    }
+    .side-nav-btn:hover {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      transform: translateX(4px);
+    }
+    .side-nav-btn.active {
+      background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+      color: #ffffff;
+      font-weight: 800;
+      box-shadow: 0 8px 20px -4px rgba(16, 185, 129, 0.55);
+    }
+
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-section {
+      animation: fadeSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes shakeInput {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+    .input-error-shake {
+      animation: shakeInput 0.25s ease-in-out 2;
+      border-color: #e11d48 !important;
+      background-color: #ffe4e6 !important;
+      color: #be123c !important;
+    }
+
+    .modern-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--card-border);
+      box-shadow: 0 12px 32px -10px rgba(30, 58, 138, 0.08);
+      border-radius: 1rem;
+    }
+
+    .modern-input {
+      background-color: var(--input-bg);
+      color: var(--text-main);
+      border: 1.5px solid var(--input-border);
+      border-radius: 0.65rem;
+      padding: 0.45rem 0.72rem;
+      transition: all 0.2s ease;
+    }
+    .modern-input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+    }
+
+    .formal-table th {
+      background: linear-gradient(90deg, #1e40af 0%, #3730a3 100%);
+      color: #ffffff;
+      border: 1px solid #bfdbfe;
+      padding: 7px 8px;
+      font-weight: 700;
+    }
+    .formal-table td {
+      border: 1px solid var(--input-border);
+      padding: 6px 8px;
+    }
+
+    /* SMART ID CARD & ADMIT / SEAT PLAN GRIDS */
+    .id-grid-6 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .id-grid-8 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .id-grid-9 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+    .smart-id-card {
+      background: #ffffff !important;
+      color: #0f172a !important;
+      border: 1.5px solid #93c5fd;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      box-shadow: 0 4px 14px rgba(30, 64, 175, 0.1);
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .admit-grid-4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .admit-grid-6 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .seat-grid-10 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .seat-grid-12 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .seat-grid-15 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    .seat-grid-18 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+    .crop-mark { border: 1.5px dashed #64748b; }
+
+    /* ULTRA-MODERN A4 MARKSHEET / CERTIFICATES WITH WATERMARK */
+    .marksheet-a4 {
+      background: #ffffff !important;
+      color: #0f172a !important;
+      border: 3px double #1e3a8a;
+      border-radius: 10px;
+      padding: 10px 13px;
+      position: relative;
+      overflow: hidden;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 196mm;
+      margin: 0 auto;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .marksheet-watermark {
+      position: absolute;
+      top: 52%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 280px;
+      height: 280px;
+      object-fit: contain;
+      opacity: 0.06;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .marksheet-content {
+      position: relative;
+      z-index: 1;
+    }
+    .ms-table th {
+      background: linear-gradient(90deg, #eff6ff 0%, #e0e7ff 100%) !important;
+      color: #1e3a8a !important;
+      border: 1px solid #93c5fd !important;
+      padding: 3.5px 5px !important;
+      font-weight: 800 !important;
+    }
+    .ms-table td {
+      border: 1px solid #cbd5e1 !important;
+      padding: 3px 5px !important;
+      color: #0f172a !important;
+    }
+
+    /* A4 PRINT ENGINE RULES */
+    @media print {
+      html, body {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-only {
+        display: block !important;
+      }
+      #print-stage {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .formal-table th {
+        background: #e0e7ff !important;
+        color: #1e3a8a !important;
+        border: 1px solid #1e3a8a !important;
+      }
+      .formal-table td {
+        border: 1px solid #334155 !important;
+        color: #000000 !important;
+      }
+      .page-break {
+        page-break-after: always;
+        break-after: page;
+      }
+      .avoid-break {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+    } 
+  </style>
+
+  <style id="modern-skin">
+    :root{--bg-main:#f3f6f7;--card-bg:#ffffff;--card-border:#dde6ea;--text-main:#14262e;--text-muted:#5b707a;--input-border:#c9d6dc;--gold:#c8962e}
+    html.dark{--bg-main:#0a1519;--card-bg:rgba(16,32,38,.94);--card-border:#1f4350;--text-main:#e8f1f3;--input-bg:#12262d;--input-border:#2a4a56}
+    *{font-family:'Noto Sans Bengali','Hind Siliguri','Plus Jakarta Sans',sans-serif}
+    body{background:var(--bg-main) radial-gradient(1100px 480px at 92% -8%,rgba(24,116,135,.10),transparent 60%);font-size:15px}
+    html.dark body{background:var(--bg-main) radial-gradient(1100px 480px at 92% -8%,rgba(24,116,135,.22),transparent 60%)}
+    .royal-topbar{background:#0b2830;border-bottom:3px solid var(--gold)}
+    .royal-sidebar{background:linear-gradient(180deg,#0f3440 0%,#0b2830 100%);border-right:1px solid rgba(255,255,255,.06)}
+    .side-nav-btn{border-radius:10px;color:#cfe3e8;font-size:13.5px}
+    .side-nav-btn:hover{transform:none;background:rgba(255,255,255,.08)}
+    .side-nav-btn.active{background:rgba(200,150,46,.16);color:#fff;box-shadow:inset 3px 0 0 #e0b04a;font-weight:700}
+    .modern-card{border-radius:16px;box-shadow:0 1px 2px rgba(11,40,48,.05),0 10px 28px -14px rgba(11,40,48,.16)}
+    .modern-input{border-radius:10px;border-width:1px}
+    .modern-input:focus{border-color:#187487;box-shadow:0 0 0 3px rgba(24,116,135,.20)}
+    .formal-table th{background:#14414d;border-color:#1d5666;font-weight:600;position:sticky;top:0}
+    .formal-table tbody tr:nth-child(even){background:rgba(24,116,135,.045)}
+    .formal-table tbody tr:hover{background:rgba(200,150,46,.10)}
+    button,label[class*="cursor-pointer"]{cursor:pointer}
+    :focus-visible{outline:2px solid #e0b04a;outline-offset:2px}
+    ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#9db8c0;border-radius:8px}
+    @media (max-width:1023px){
+      .royal-sidebar{position:fixed;top:0;bottom:0;left:0;z-index:45;overflow-y:auto;padding-top:76px}
+      body.sidebar-collapsed .royal-sidebar{margin-left:calc(var(--sidebar-width)*-1)}
+    }
+    @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+    /* ===== MARKSHEET / CERTIFICATE: bigger header, bigger logo, visible watermark ===== */
+    .marksheet-a4{border:3px double #175e6e;border-radius:6px;padding:14px 16px}
+    .marksheet-a4::before{content:"";position:absolute;inset:5px;border:1px solid #c8962e;border-radius:3px;pointer-events:none;z-index:2}
+    .marksheet-watermark{width:480px!important;height:480px!important;top:50%!important;opacity:.14!important;filter:saturate(.85);
+      -webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .ms-logo{width:112px;height:112px;object-fit:contain;filter:drop-shadow(0 1px 2px rgba(0,0,0,.15))}
+    .ms-eiin{font-size:12.5px;font-weight:800;color:#175e6e;font-family:'Plus Jakarta Sans',monospace;margin-top:2px}
+    .ms-school-name{font:800 34px/1.15 'Noto Serif Bengali','Hind Siliguri',serif;color:#0b2830}
+    .ms-school-en{font-size:16.5px;font-weight:800;color:#175e6e;letter-spacing:.07em;text-transform:uppercase;margin-top:2px}
+    .ms-school-addr{font-size:14px;font-weight:500;color:#334155;margin-top:1px}
+    .ms-title{display:inline-block;margin-top:6px;padding:4px 26px;border-radius:8px;background:#175e6e;border:1px solid #e0b04a;color:#fff}
+    .marksheet-a4 .ms-table th{background:rgba(214,241,244,.78)!important;border-color:#7ccbd8!important;color:#0b2830!important}
+    .marksheet-a4 .ms-table td{background:transparent!important}
+    .marksheet-a4 .bg-white{background:rgba(255,255,255,.72)!important}
+    @media print{.marksheet-watermark{opacity:.14!important}.marksheet-a4{box-shadow:none!important}}
+  </style>
+
+  <style id="modern-skin-2">
+    .marksheet-a4{width:199mm!important;max-width:none!important;margin:0 auto!important}
+    .marksheet-a4.ms-a4-full{height:284mm;display:flex;flex-direction:column}
+    .marksheet-a4.ms-a4-full .marksheet-content{flex:1;display:flex;flex-direction:column;justify-content:space-between}
+    .marksheet-a4 .ms-main td{padding:var(--row-pad,4px) 6px!important}
+    .ms-qr{width:116px;height:116px;object-fit:contain;border:2px solid #175e6e;padding:3px;border-radius:8px;background:#fff}
+    @media print{#print-stage>.page-break:last-child{break-after:auto!important;page-break-after:auto!important}}
+  </style>
+  <style id="a4-engine">
+    /* ==================== A4 PRINT ENGINE v2 — পুরো পেজ ফিট, নিচে ফাঁকা নেই ==================== */
+    .a4-sheet{box-sizing:border-box;display:grid;background:#fff;color:#0f172a;position:relative;overflow:hidden;
+      margin:0 auto 16px;box-shadow:0 2px 16px rgba(15,40,48,.28);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .a4-sheet.portrait{width:200mm;height:286mm}
+    .a4-sheet.landscape{width:287mm;height:199mm}
+    .a4-cell{box-sizing:border-box;min-width:0;min-height:0;overflow:hidden;padding:1.2mm;border:.25mm dashed #94a3b8}
+    .a4-cell>*{width:100%;height:100%}
+    .preview-zoom .a4-sheet{zoom:var(--pz,1)}
+    .a4-sheet *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .trunc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    @media print{
+      html,body{height:auto!important;min-height:0!important;display:block!important;margin:0!important;padding:0!important}
+      #print-stage .a4-sheet{margin:0!important;box-shadow:none!important;zoom:1!important;break-after:page;page-break-after:always}
+      #print-stage .a4-sheet:last-child{break-after:auto!important;page-break-after:auto!important}
+    }
+
+
+    /* ---------- প্রবেশপত্র ---------- */
+    .adm{font-size:var(--fs,10px);box-sizing:border-box;display:flex;flex-direction:column;background:#fff;color:#0f172a;position:relative;
+      border:.4mm solid #1d4ed8;border-radius:2.2mm;overflow:hidden;line-height:1.3}
+    .adm>*:not(.adm-wm){position:relative;z-index:1}
+    .adm-wm{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:55%;max-height:55%;object-fit:contain;opacity:.09;pointer-events:none;z-index:0}
+    .adm-head{display:flex;align-items:center;gap:.7em;background:linear-gradient(125deg,#1d4ed8 0%,#3730a3 60%,#0d9488 100%);color:#fff;padding:.6em .8em;border-bottom:.6mm solid #fbbf24}
+    .adm-head .logo{width:3.8em;height:3.8em;border-radius:50%;background:#fff;padding:.2em;object-fit:contain;flex:none}
+    .adm-head .ctr{flex:1;text-align:center;min-width:0}
+    .adm-head .photo{width:4.6em;height:5.6em;object-fit:cover;border:.4mm solid #fff;border-radius:1mm;flex:none;background:#dbeafe}
+    .adm-school{font-weight:800;font-size:1.35em;color:#fde68a;line-height:1.15}
+    .adm-addr{font-size:.82em;color:#dbeafe}
+    .adm-title{display:inline-block;background:#fbbf24;color:#1e293b;font-weight:800;font-size:.88em;border-radius:99px;padding:.12em .9em;margin-top:.3em}
+    .adm-main{flex:1;min-height:0;padding:.7em .9em;display:flex;flex-direction:column;justify-content:space-evenly;gap:.5em}
+    .adm-grid{display:grid;grid-template-columns:1fr 1fr;gap:.4em .9em;background:rgba(239,246,255,.75);border:.25mm solid #bfdbfe;border-radius:1.2mm;padding:.6em .8em;font-size:1.03em}
+    .adm-name{font-weight:800;font-size:1.2em;color:#172554}
+    .adm-uid{font-family:monospace;font-weight:800;color:#1d4ed8}
+    .adm-roll{font-weight:800;background:#fde68a;padding:0 .5em;border-radius:.8mm}
+    .adm-notes{margin:0;padding-left:1.4em;font-size:.95em;color:#334155;line-height:1.55}
+    .adm-foot{display:flex;align-items:center;gap:.9em;padding:.6em .9em;border-top:.3mm solid #bfdbfe;background:rgba(248,251,255,.92)}
+    .adm-qr{width:var(--qr);flex:none;text-align:center}
+    .adm-qr img{width:100%;height:auto;display:block;border:.3mm solid #93c5fd;padding:.5mm;background:#fff;border-radius:1.2mm;box-sizing:border-box}
+    .adm-qr div{font-size:.72em;font-weight:800;color:#1e3a8a;line-height:1.25;margin-top:.2em}
+    .adm-mid{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:.15em}
+    .adm-sigs{display:flex;justify-content:space-between;gap:.8em;margin-top:.3em}
+    .adm-sigs .adm-sig{flex:1;min-width:0}
+    .adm-bc{height:7mm;width:100%}
+    .adm-sig{flex:none;text-align:center;min-width:16mm}
+    .adm-sig img{height:5.5mm;display:block;margin:0 auto;object-fit:contain}
+    .adm-sig .sp{height:5.5mm}
+    .adm-sig .ln{border-top:.25mm solid #1e3a8a;font-size:.82em;font-weight:700;color:#172554;padding:.05em .5em 0}
+
+
+  </style>
+
+  <style id="v6-engine">
+    /* ---------- পেজিনেশন ---------- */
+    .pg-btn{min-width:2rem;padding:.3rem .6rem;border-radius:.5rem;border:1px solid rgba(100,116,139,.35);background:rgba(255,255,255,.7);font-weight:700;font-size:.75rem;color:#334155;cursor:pointer;transition:.15s}
+    .pg-btn:hover:not(:disabled){background:#175e6e;color:#fff;border-color:#175e6e}
+    .pg-btn:disabled{opacity:.4;cursor:not-allowed}
+    .pg-btn.pg-active{background:#175e6e;color:#fff;border-color:#175e6e}
+    .dark .pg-btn{background:rgba(15,40,48,.6);color:#cbd5e1}
+    #stu-pager{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem;padding:.75rem .25rem 0}
+
+    /* ---------- স্মার্ট আইডি কার্ড ---------- */
+    .idc{position:relative;font-size:var(--fs,10px);box-sizing:border-box;display:flex;flex-direction:column;background:#fff;color:#0f172a;border:.3mm solid #175e6e;border-radius:2.4mm;overflow:hidden;line-height:1.25}
+    .idc>*:not(.idc-wm){position:relative;z-index:1}
+    .idc-wm{position:absolute;left:50%;top:54%;transform:translate(-50%,-50%);width:58%;max-height:72%;object-fit:contain;opacity:.12;z-index:0;pointer-events:none}
+    .idc-head{flex:none;display:flex;align-items:center;gap:.7em;padding:.45em .8em;background:linear-gradient(110deg,#0b2830 0%,#175e6e 70%,#1f7f93 100%);color:#fff;border-bottom:.5mm solid #e0b04a}
+    .idc-head img{width:2.6em;height:2.6em;border-radius:50%;background:#fff;padding:.12em;object-fit:contain;flex:none}
+    .idc-hd{min-width:0;flex:1}
+    .idc-school{font-weight:800;font-size:1.2em;color:#fde9b0;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .idc-sub{font-size:.8em;color:#cfe9ee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .idc-badge{flex:none;background:#e0b04a;color:#0b2830;font-weight:800;font-size:.7em;letter-spacing:.06em;padding:.22em .75em;border-radius:99px}
+    .idc-body{flex:1;min-height:0;display:grid;grid-template-columns:var(--pw) minmax(0,1fr) var(--qr);gap:.8em;align-items:stretch;padding:.55em .8em}
+    .idc-photo{width:var(--pw);height:auto;aspect-ratio:7/9;align-self:center;min-height:0;object-fit:cover;object-position:center top;border-radius:1.4mm;border:.45mm solid #175e6e;background:#d6f1f4;display:block}
+    .idc-info{min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:stretch;text-align:center;gap:.34em}
+    .idc-name{font-weight:800;font-size:1.28em;color:#0b2830;line-height:1.15;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+    .idc-en{font-size:.88em;font-weight:600;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .idc-uid{align-self:center;background:#e7f6f8;border:.2mm solid #7fc4d0;color:#0f4a58;font-family:monospace;font-weight:800;padding:.05em .55em;border-radius:.9mm;letter-spacing:.04em}
+    .idc-row{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .idc-roll{font-weight:800;color:#0b2830}
+    .idc-mob{font-weight:800;color:#0b2830}
+    .idc-side{display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:.3em;min-width:0}
+    .idc-qr{width:var(--qr);display:flex;flex-direction:column;align-items:center;border:.3mm solid #7fc4d0;border-radius:1.4mm;background:#fff;padding:.4mm}
+    .idc-qr img{width:100%;height:auto;display:block}
+    .idc-qr span{font-size:.7em;font-weight:800;color:#0f4a58;letter-spacing:.06em;line-height:1.3}
+    .idc-noqr{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-weight:800;color:#94a3b8}
+    .idc-blood{background:#be123c;color:#fff;font-weight:800;font-size:.82em;padding:.15em .7em;border-radius:99px;white-space:nowrap}
+    .idc-foot{flex:none;background:rgba(214,241,244,.6);border-top:.25mm solid #b0e2e9;padding:.3em .8em .35em;display:flex;align-items:flex-end;justify-content:space-between;gap:.8em}
+    .idc-bc{height:4.6mm;max-width:46mm;overflow:hidden}
+    .idc-bc svg{height:100%;width:auto;max-width:100%}
+    .idc-mono{font-family:monospace;font-size:.74em;color:#0f4a58;letter-spacing:.06em;margin-top:.1em;white-space:nowrap}
+    .idc-sig{height:1.9em;object-fit:contain;display:block;margin:0 auto}
+    .idc-sign{border-top:.25mm solid #0f4a58;font-size:.75em;font-weight:700;padding:.05em .6em 0;color:#0f4a58}
+
+    /* ---------- সিট প্ল্যান স্লিপ ---------- */
+    .seat{position:relative;font-size:var(--fs,10px);box-sizing:border-box;display:flex;flex-direction:column;background:#fff;color:#0f172a;border:.3mm solid #175e6e;border-radius:2mm;overflow:hidden;line-height:1.25}
+    .seat>*:not(.seat-wm){position:relative;z-index:1}
+    .seat-wm{position:absolute;left:50%;top:55%;transform:translate(-50%,-50%);width:50%;max-height:70%;object-fit:contain;opacity:.12;z-index:0;pointer-events:none}
+    .seat-head{flex:none;text-align:center;padding:.3em .5em;background:linear-gradient(110deg,#0b2830,#175e6e);border-bottom:.45mm solid #e0b04a}
+    .seat-head .t1{font-weight:800;color:#fde9b0;font-size:1.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .seat-head .t2{font-size:.82em;color:#cfe9ee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .seat-body{flex:1;min-height:0;display:grid;grid-template-columns:var(--sw) minmax(0,1fr) auto;gap:.7em;align-items:stretch;padding:.45em .6em}
+    .seat-body>img{width:var(--sw);height:auto;aspect-ratio:7/9;align-self:center;min-height:0;object-fit:cover;object-position:center top;border:.35mm solid #175e6e;border-radius:1.2mm;background:#d6f1f4;display:block}
+    .seat-info{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:.3em}
+    .seat-info .nm{font-weight:800;color:#0b2830;font-size:1.1em;line-height:1.15;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+    .seat-info .uid{font-family:monospace;font-weight:800;color:#175e6e;font-size:.95em}
+    .seat-roll{align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:3.4em;border:0;background:none;padding:.1em .5em}
+    .seat-roll .lb{font-size:.75em;font-weight:800;color:#175e6e}
+    .seat-roll .no{font-size:2em;font-weight:800;line-height:1;color:#0b2830}
+    .seat-foot{flex:none;display:flex;justify-content:space-between;gap:.6em;border-top:.25mm dashed #7fa8b0;padding:.3em .6em;font-size:.88em;font-weight:700;color:#334155;background:rgba(247,251,252,.8)}
+
+    /* ---------- সনদ / ছাড়পত্র (A4 Landscape) ---------- */
+    .cert{position:relative;box-sizing:border-box;display:flex;flex-direction:column;background:#fff;color:#0f172a;padding:9mm 12mm 8mm;font-family:'Noto Serif Bengali','Hind Siliguri',serif;overflow:hidden}
+    .cert>*:not(.cert-f1):not(.cert-f2):not(.cert-wm):not(.cert-corner){position:relative;z-index:1}
+    .cert-f1{position:absolute;inset:2mm;border:1.4mm double #175e6e;pointer-events:none;border-radius:1mm}
+    .cert-f2{position:absolute;inset:4.6mm;border:.3mm solid #c8962e;pointer-events:none}
+    .cert-corner{position:absolute;width:12mm;height:12mm;border:0 solid #c8962e;pointer-events:none;z-index:1}
+    .cert-corner.tl{top:6.4mm;left:6.4mm;border-top-width:.8mm;border-left-width:.8mm}
+    .cert-corner.tr{top:6.4mm;right:6.4mm;border-top-width:.8mm;border-right-width:.8mm}
+    .cert-corner.bl{bottom:6.4mm;left:6.4mm;border-bottom-width:.8mm;border-left-width:.8mm}
+    .cert-corner.br{bottom:6.4mm;right:6.4mm;border-bottom-width:.8mm;border-right-width:.8mm}
+    .cert-wm{position:absolute;left:50%;top:54%;transform:translate(-50%,-50%);width:118mm;height:118mm;object-fit:contain;opacity:.08;pointer-events:none}
+    .cert-head{display:grid;grid-template-columns:27mm 1fr 27mm;align-items:center;gap:5mm;padding-bottom:2mm;border-bottom:.5mm solid #175e6e}
+    .cert-lg{width:25mm;height:25mm}
+    .cert-lg img{width:25mm;height:25mm;object-fit:contain}
+    .cert-ph{width:23mm;height:27mm;justify-self:end}
+    .cert-ph img{width:23mm;height:27mm;object-fit:cover;border:.5mm solid #175e6e;border-radius:1mm}
+    .cert-sn{font:800 30px/1.15 'Noto Serif Bengali','Hind Siliguri',serif;color:#0b2830;text-align:center}
+    .cert-se{font-size:14px;font-weight:800;color:#175e6e;letter-spacing:.06em;text-transform:uppercase;text-align:center}
+    .cert-sa{font-size:13px;color:#334155;text-align:center;line-height:1.5}
+    .cert-meta{display:flex;justify-content:space-between;font-weight:700;color:#175e6e;font-size:13.5px;margin-top:1.8mm}
+    .cert-title{text-align:center;margin:1.5mm 0 1mm}
+    .cert-title span{display:inline-block;background:linear-gradient(100deg,#0b2830,#175e6e 60%,#1f7f93);color:#fff;border:.4mm solid #e0b04a;border-radius:99px;padding:1mm 11mm;font-size:19px;font-weight:800;letter-spacing:.03em;box-shadow:0 .6mm 0 #c8962e}
+    .cert-body{flex:1;display:flex;flex-direction:column;justify-content:center;gap:2.5mm;padding:0 4mm;text-align:justify;font-size:18.5px;line-height:2.05;color:#1e293b}
+    .cert-body strong{color:#0b2830;border-bottom:.3mm dotted #c8962e}
+    .cert-det{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2mm 6mm;font-size:16.5px;border:.3mm solid #c8962e;border-radius:1.5mm;padding:2.4mm 4mm;background:rgba(214,241,244,.35);line-height:1.6}
+    .cert-foot{display:flex;justify-content:space-between;align-items:flex-end;padding:0 4mm;font-size:13px;line-height:1.5;color:#334155}
+    .cert-qr{display:flex;align-items:center;gap:3mm}
+    .cert-qr img{width:23mm;height:23mm;border:.4mm solid #175e6e;padding:.8mm;border-radius:1.5mm;background:#fff}
+    .cert-noqr{width:23mm;height:23mm;border:.4mm dashed #94a3b8;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-weight:800}
+    .cert-qr-t{font-weight:800;color:#0b2830}
+    .cert-vc{font-family:monospace;font-weight:800;color:#175e6e;letter-spacing:.08em}
+    .cert-sig{text-align:center;min-width:46mm}
+    .cert-sig img{height:11mm;object-fit:contain;display:block;margin:0 auto}
+    .cert-sig .sp{height:11mm}
+    .cert-sig .ln{border-top:.35mm solid #0f172a;padding-top:.8mm;font-weight:800;color:#0b2830}
+
+    /* ---------- বেতন / ফি রশিদ ---------- */
+    .rc{font-size:var(--fs,11px);position:relative;box-sizing:border-box;display:flex;flex-direction:column;background:#fff;color:#0f172a;border:.35mm solid #175e6e;border-radius:2mm;overflow:hidden;padding:.7em .9em;line-height:1.3}
+    .rc>*:not(.rc-wm):not(.rc-stamp){position:relative;z-index:1}
+    .rc-wm{position:absolute;left:50%;top:54%;transform:translate(-50%,-50%);width:52%;max-height:60%;object-fit:contain;opacity:.09;pointer-events:none}
+    .rc .mono{font-family:monospace}
+    .rc-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:.6em;border-bottom:.35mm solid #175e6e;padding-bottom:.4em}
+    .rc-head img{width:2.8em;height:2.8em;object-fit:contain;flex:none}
+    .rc-sn{font-weight:800;font-size:1.25em;color:#0b2830;line-height:1.15}
+    .rc-ad{font-size:.78em;color:#475569}
+    .rc-badge{flex:none;background:#175e6e;color:#fff;font-weight:800;font-size:.75em;padding:.2em .8em;border-radius:99px;white-space:nowrap}
+    .rc-titlebar{flex:none;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:.2em .8em;margin:.4em 0 .3em;font-size:.88em;color:#334155}
+    .rc-title{font-weight:800;color:#175e6e;font-size:1.25em}
+    .rc-info{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:.1em .8em;background:rgba(214,241,244,.6);border:.2mm solid #b0e2e9;border-radius:1mm;padding:.3em .6em}
+    .rc-tbwrap{flex:1 0 auto;margin-top:.4em;background-image:repeating-linear-gradient(transparent 0,transparent calc(1.75em - 1px),#e2e8f0 calc(1.75em - 1px),#e2e8f0 1.75em)}
+    .rc-tbl{width:100%;border-collapse:collapse;background:rgba(255,255,255,.85)}
+    .rc-tbl th{background:#175e6e;color:#fff;font-weight:700;padding:.2em .4em;border:.2mm solid #175e6e;text-align:left}
+    .rc-tbl td{border:.2mm solid #94a3b8;padding:.15em .4em;vertical-align:top}
+    .rc-tbl .am{text-align:right;font-family:monospace;white-space:nowrap}
+    .rc-tbl .sl{width:2em;text-align:center}
+    .rc-sum{flex:none;margin-top:.4em;margin-left:auto;min-width:55%;border:.25mm solid #175e6e;border-radius:1mm;overflow:hidden;background:rgba(255,255,255,.9)}
+    .rc-sum>div{display:flex;justify-content:space-between;gap:1em;padding:.12em .6em;border-bottom:.2mm solid #e2e8f0}
+    .rc-sum>div:last-child{border-bottom:0}
+    .rc-sum .rc-net{background:rgba(214,241,244,.8);font-weight:800}
+    .rc-sum .rc-due{background:#fff1f2;color:#be123c;font-weight:800}
+    .rc-sum b{font-family:monospace}
+    .rc-words{flex:none;margin-top:.35em;font-size:.92em;color:#0b2830}
+    .rc-meta{flex:none;display:flex;flex-wrap:wrap;gap:.1em 1em;font-size:.85em;color:#334155;margin-top:.2em}
+    .rc-sign{flex:none;display:flex;justify-content:space-between;align-items:flex-end;margin-top:.5em;font-size:.88em;gap:.5em}
+    .rc-sign img{height:2.2em;object-fit:contain;display:block;margin:0 auto}
+    .rc-sign .rc-qr{height:4.6em;width:4.6em;border:.2mm solid #94a3b8;padding:.1em;border-radius:.8mm;background:#fff}
+    .rc-sign .sp{height:2.2em}
+    .rc-sign .ln{border-top:.3mm solid #0f172a;padding:.1em .8em 0;font-weight:700;text-align:center}
+    .rc-stamp{position:absolute;left:6%;bottom:27%;transform:rotate(-13deg);border:.6mm solid;padding:.05em .7em;font-weight:800;font-size:1.7em;opacity:.5;letter-spacing:.04em;pointer-events:none;border-radius:1mm;z-index:2}
+    .rc-st-paid{color:#047857;border-color:#047857}
+    .rc-st-part{color:#b45309;border-color:#b45309;font-size:1.3em}
+    .rc-st-draft{color:#64748b;border-color:#64748b}
+
+    /* ---------- মডিউল ১০ — আধুনিক ইন্টারফেস ---------- */
+    .cm-tile{display:flex;flex-direction:column;align-items:flex-start;gap:.25rem;text-align:left;padding:.9rem 1rem;border-radius:1rem;border:1.5px solid rgba(100,116,139,.3);background:rgba(255,255,255,.65);cursor:pointer;transition:transform .18s,box-shadow .18s,border-color .18s,background .18s}
+    .cm-tile:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(23,94,110,.18);border-color:#175e6e}
+    .cm-tile.active{background:linear-gradient(135deg,#0b2830,#175e6e);color:#fff;border-color:#e0b04a;box-shadow:0 8px 24px rgba(23,94,110,.35)}
+    .cm-ic{font-size:1.6rem;line-height:1}
+    .cm-tt{font-weight:800;font-size:1rem}
+    .cm-ds{font-size:.72rem;opacity:.75}
+    .dark .cm-tile{background:rgba(15,40,48,.55);color:#e2e8f0}
+    .cm-sec{font-weight:800;font-size:.8rem;color:#175e6e;display:flex;align-items:center;gap:.4rem;margin-bottom:.6rem}
+    .dark .cm-sec{color:#7fd0dd}
+    .cm-sec i{font-style:normal;display:inline-flex;align-items:center;justify-content:center;width:1.4rem;height:1.4rem;border-radius:99px;background:#175e6e;color:#fff;font-size:.72rem}
+    .cm-lbl{display:block;font-size:.7rem;font-weight:700;color:#64748b;margin-bottom:.2rem}
+    .cm-chip{display:inline-block;font-size:.65rem;font-weight:700;padding:.1rem .5rem;border-radius:99px;background:rgba(23,94,110,.12);color:#0f4a58;white-space:nowrap}
+    .dark .cm-chip{background:rgba(127,208,221,.15);color:#a8e2ec}
+    .cm-chip.cm-ok{background:#d1fae5;color:#065f46}
+    .cm-chip.cm-warn{background:#fef3c7;color:#92400e}
+    .cm-empty{padding:1.2rem;text-align:center;color:#94a3b8;font-size:.85rem;font-weight:600}
+    .cm-stu-card{display:flex;align-items:center;gap:.75rem;padding:.7rem;border-radius:.9rem;background:linear-gradient(135deg,rgba(214,241,244,.7),rgba(255,255,255,.6));border:1px solid rgba(23,94,110,.25)}
+    .dark .cm-stu-card{background:rgba(15,40,48,.55)}
+    .cm-stu-photo{width:3.2rem;height:4rem;object-fit:cover;border-radius:.6rem;border:2px solid #175e6e;background:#d6f1f4;flex:none}
+    .cm-stepper{display:flex;flex-direction:column;align-items:center;gap:.15rem;font-size:.65rem;font-weight:700;color:#64748b}
+    .cm-stepper button{width:1.9rem;height:1.5rem;border-radius:.4rem;background:#175e6e;color:#fff;font-size:.65rem}
+    .cm-stepper button:disabled{opacity:.3;cursor:not-allowed}
+    .cm-hit{display:flex;align-items:center;gap:.6rem;width:100%;padding:.45rem .7rem;border-bottom:1px solid rgba(100,116,139,.15);transition:background .12s}
+    .cm-hit:hover{background:rgba(23,94,110,.1)}
+    .cm-hit img{width:2rem;height:2.5rem;object-fit:cover;border-radius:.4rem;border:1px solid #cbd5e1;flex:none}
+    #cert-search-results{position:absolute;left:0;right:0;top:100%;margin-top:.3rem;z-index:30;max-height:20rem;overflow:auto;border-radius:.8rem;border:1px solid rgba(23,94,110,.3);background:#fff;box-shadow:0 14px 34px rgba(15,40,48,.25)}
+    .dark #cert-search-results{background:#0f2830}
+    .cm-seg{display:grid;grid-template-columns:1fr 1fr;gap:.25rem;padding:.25rem;border-radius:.8rem;background:rgba(100,116,139,.15)}
+    .cm-seg button{padding:.5rem .4rem;border-radius:.6rem;font-weight:800;font-size:.78rem;color:#475569;transition:.15s}
+    .cm-seg button.active{background:#175e6e;color:#fff;box-shadow:0 3px 10px rgba(23,94,110,.35)}
+    .cm-preset{font-size:.68rem;font-weight:700;padding:.2rem .6rem;border-radius:99px;border:1px dashed #175e6e;color:#175e6e;background:rgba(23,94,110,.05);transition:.15s}
+    .cm-preset:hover{background:#175e6e;color:#fff}
+    .cm-multi-list{max-height:15rem;overflow:auto;border:1px solid rgba(100,116,139,.3);border-radius:.7rem;background:rgba(255,255,255,.5)}
+    .cm-row{display:flex;align-items:center;gap:.5rem;padding:.35rem .6rem;font-size:.78rem;border-bottom:1px solid rgba(100,116,139,.12);cursor:pointer;transition:background .12s}
+    .cm-row:hover{background:rgba(23,94,110,.08)}
+    .cm-row.sel{background:rgba(23,94,110,.15)}
+    .cm-sum{border:1px solid rgba(23,94,110,.3);border-radius:.9rem;padding:.7rem .9rem;background:linear-gradient(135deg,rgba(214,241,244,.6),rgba(255,255,255,.5))}
+    .dark .cm-sum{background:rgba(15,40,48,.55)}
+    .cm-sum-row{display:flex;justify-content:space-between;font-size:.82rem;padding:.12rem 0}
+    .cm-sum-row b{font-family:monospace}
+    .cm-sum-net{font-size:.95rem;font-weight:800;border-top:1px dashed rgba(23,94,110,.4);margin-top:.2rem;padding-top:.3rem}
+    .cm-words{margin-top:.4rem;font-size:.74rem;color:#0f4a58;font-weight:700}
+    .dark .cm-words{color:#a8e2ec}
+    .cm-note{padding:.45rem .8rem;margin:0 0 .6rem;border-radius:.6rem;background:#e0f2fe;color:#075985;font-size:.75rem;font-weight:700}
+    .cm-note.warn{background:#fef3c7;color:#92400e}
+    .cm-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin-bottom:.7rem}
+    .cm-tb-btn{padding:.35rem .7rem;border-radius:.55rem;background:rgba(23,94,110,.1);color:#0f4a58;font-weight:800;font-size:.75rem;transition:.15s}
+    .cm-tb-btn:hover{background:#175e6e;color:#fff}
+    .dark .cm-tb-btn{color:#a8e2ec}
+    #certificate-preview-box{background:repeating-linear-gradient(45deg,rgba(100,116,139,.07) 0 10px,rgba(100,116,139,.12) 10px 20px);border-radius:.9rem;padding:1rem .5rem;max-height:calc(100vh - 11rem);min-height:18rem;overflow:auto}
+  </style>
+  <style id="stl-engine">
+    /* ---------- শিক্ষার্থী তালিকা প্রিন্ট (মডিউল ২) ---------- */
+    .stl-sec{background:#fff;color:#0f172a;font-size:var(--stl-fs,9.5px);line-height:1.3;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .stl-sec.stl-break{break-before:page;page-break-before:always}
+    .stl-head{display:flex;align-items:center;justify-content:center;gap:3mm;border-bottom:.6mm solid #175e6e;padding-bottom:1.6mm;margin-bottom:1.6mm}
+    .stl-head img{width:15mm;height:15mm;object-fit:contain;flex:none}
+    .stl-head .sn{font-weight:800;font-size:19px;line-height:1.2;color:#0b2830;text-align:center}
+    .stl-head .sa{font-size:10.5px;color:#334155;text-align:center}
+    .stl-title{text-align:center;margin:0 0 2mm}
+    .stl-title span{display:inline-block;background:#175e6e;color:#fff;font-weight:800;font-size:12px;padding:1mm 7mm;border-radius:99px;border:.3mm solid #e0b04a}
+    .stl-table{width:100%;border-collapse:collapse;table-layout:auto}
+    .stl-table thead{display:table-header-group}
+    .stl-table tr{break-inside:avoid;page-break-inside:avoid}
+    .stl-table th{background:#175e6e!important;color:#fff!important;padding:1.1mm 1mm;border:.2mm solid #175e6e;font-weight:700;text-align:left}
+    .stl-table td{border:.2mm solid #94a3b8;padding:.7mm 1mm;vertical-align:middle;color:#0f172a}
+    .stl-table tbody tr:nth-child(even) td{background:#f1f7f8!important}
+    .stl-table .c{text-align:center}
+    .stl-table .nw{white-space:nowrap}
+    .stl-table .mono{font-family:monospace;font-weight:700}
+    .stl-table .en{color:#475569;font-size:.9em}
+    .stl-ph{width:8mm;height:10mm;object-fit:cover;object-position:center top;border:.2mm solid #175e6e;border-radius:.6mm;display:block;margin:0 auto;background:#d6f1f4}
+    .stl-foot{display:flex;justify-content:space-between;align-items:flex-end;margin-top:3mm;font-weight:700;break-inside:avoid;page-break-inside:avoid}
+    .stl-foot .sg{text-align:center;min-width:42mm}
+    .stl-foot .sg img{height:9mm;object-fit:contain;display:block;margin:0 auto}
+    .stl-foot .sg .ln{border-top:.3mm solid #0f172a;padding-top:.6mm}
+  </style>
+
+  <style id="site-dialog">
+    /* ---------- ওয়েবসাইট-ভিত্তিক কনফার্ম / প্রম্পট ডায়ালগ ---------- */
+    .sd-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(7,25,31,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);animation:sdFade .14s ease-out}
+    .sd-box{width:100%;max-width:26rem;background:#fff;color:#0f172a;border-radius:1rem;box-shadow:0 24px 60px rgba(0,0,0,.35);border:1px solid rgba(23,94,110,.25);overflow:hidden;animation:sdPop .16s ease-out;font-family:inherit}
+    .sd-head{display:flex;align-items:center;gap:.6rem;padding:.85rem 1.1rem;background:linear-gradient(110deg,#0b2830,#175e6e);color:#fde9b0;font-weight:800;font-size:.95rem}
+    .sd-head.sd-danger{background:linear-gradient(110deg,#7f1d1d,#be123c);color:#fff}
+    .sd-ico{font-size:1.15rem;line-height:1}
+    .sd-msg{padding:1.1rem 1.2rem .6rem;font-size:.9rem;line-height:1.65;white-space:pre-line;word-break:break-word;color:#1e293b}
+    .sd-input{display:block;width:calc(100% - 2.4rem);margin:.4rem 1.2rem .2rem;padding:.6rem .8rem;border:1.5px solid #94a3b8;border-radius:.7rem;font-size:.95rem;font-weight:600;background:#f8fafc;color:#0f172a;outline:none;font-family:inherit}
+    .sd-input:focus{border-color:#175e6e;box-shadow:0 0 0 3px rgba(23,94,110,.2)}
+    .sd-err{margin:.1rem 1.2rem 0;min-height:1.1rem;font-size:.75rem;font-weight:700;color:#be123c}
+    .sd-actions{display:flex;justify-content:flex-end;gap:.6rem;padding:.7rem 1.1rem 1.05rem}
+    .sd-btn{padding:.55rem 1.2rem;border-radius:.7rem;font-weight:800;font-size:.85rem;cursor:pointer;border:1px solid transparent;font-family:inherit;transition:.12s}
+    .sd-btn:focus-visible{outline:3px solid rgba(23,94,110,.45);outline-offset:2px}
+    .sd-cancel{background:#e2e8f0;color:#334155}
+    .sd-cancel:hover{background:#cbd5e1}
+    .sd-ok{background:linear-gradient(110deg,#175e6e,#1f7f93);color:#fff;box-shadow:0 2px 8px rgba(23,94,110,.35)}
+    .sd-ok:hover{filter:brightness(1.1)}
+    .sd-ok.sd-danger{background:linear-gradient(110deg,#be123c,#e11d48);box-shadow:0 2px 8px rgba(190,18,60,.35)}
+    .dark .sd-box{background:#0f2830;color:#e2e8f0;border-color:rgba(127,196,208,.3)}
+    .dark .sd-msg{color:#e2e8f0}
+    .dark .sd-input{background:#0b1f26;color:#f1f5f9;border-color:#3b6b77}
+    .dark .sd-cancel{background:#1e3a44;color:#cbd5e1}
+    .dark .sd-cancel:hover{background:#27495a}
+    @keyframes sdFade{from{opacity:0}to{opacity:1}}
+    @keyframes sdPop{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
+    @media print{.sd-overlay{display:none!important}}
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- ==================== TOP ROYAL GRADIENT HEADER ==================== -->
+  <header class="no-print royal-topbar text-white shadow-xl sticky top-0 z-40">
+    <div class="px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <button onclick="App.toggleSidebar()" title="মেনু সাইডবার লুকান / দেখান"
+                class="w-10 h-10 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 flex items-center justify-center text-xl font-bold transition active:scale-95 shadow">
+          ☰
+        </button>
+
+        <img id="nav-school-logo" src="" alt="Logo" class="w-11 h-11 rounded-xl bg-white object-contain p-1 shadow-md hidden" />
+
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 id="nav-school-name" class="text-base md:text-xl font-extrabold tracking-tight text-white drop-shadow-sm">
+              প্রতিষ্ঠানের নাম সেট করুন
+            </h1>
+            <span class="hidden sm:inline-block text-[10px] uppercase tracking-wider bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-full font-extrabold shadow">
+              ERP v6.0 PRO
+            </span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 text-xs text-blue-100 mt-0.5">
+            <span class="bg-white/15 border border-white/20 px-2 py-0.5 rounded font-mono">
+              EIIN: <strong id="nav-eiin" class="text-amber-300">—</strong>
+            </span>
+            <div class="flex items-center bg-white/15 border border-white/25 rounded-lg px-2 py-0.5 gap-1">
+              <span>শিক্ষাবর্ষ:</span>
+              <select id="global-session" onchange="App.changeSession(this.value)" class="bg-transparent text-amber-300 font-extrabold px-1 focus:outline-none cursor-pointer"></select>
+              <button onclick="App.addSessionPrompt()" title="নতুন শিক্ষাবর্ষ যোগ করুন (+)" class="bg-emerald-400/30 hover:bg-emerald-500 text-white w-5 h-5 rounded flex items-center justify-center font-bold transition">+</button>
+              <button onclick="App.removeCurrentSession()" title="বর্তমান শিক্ষাবর্ষ সরান (-)" class="bg-rose-400/30 hover:bg-rose-500 text-white w-5 h-5 rounded flex items-center justify-center font-bold transition">−</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="App.toggleTheme()" id="theme-toggle-btn" class="bg-white/15 hover:bg-white/25 border border-white/25 text-amber-200 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition">
+          <span id="theme-icon">🌙</span>
+          <span id="theme-text" class="hidden sm:inline">ডার্ক মোড</span>
+        </button>
+
+        <div id="backup-badge" class="hidden xl:flex text-xs bg-white/10 border border-white/20 px-3 py-2 rounded-xl items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-300 animate-ping"></span>
+          <span>ব্যাকআপ: <strong id="last-backup-label" class="text-amber-200">কখনো নয়</strong></span>
+        </div>
+
+        <button onclick="App.exportFullBackup()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold px-3.5 py-2 rounded-xl shadow-md flex items-center gap-1 transition active:scale-95">
+          <span>⬇ ব্যাকআপ (.JSON)</span>
+        </button>
+
+        <label class="bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold px-3.5 py-2 rounded-xl shadow-md cursor-pointer flex items-center gap-1 transition active:scale-95">
+          <span>⬆ রিস্টোর</span>
+          <input type="file" accept=".json" class="hidden" onchange="App.importFullBackup(event)" />
+        </label>
+
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== BODY WRAPPER: COLLAPSIBLE LEFT SIDEBAR + MAIN CONTENT ==================== -->
+  <div class="no-print flex flex-1 min-h-[calc(100vh-68px)] relative">
+
+    <!-- LEFT COLLAPSIBLE SIDEBAR MENU (10 MODULES) -->
+    <aside id="app-sidebar" class="royal-sidebar text-white shrink-0 flex flex-col justify-between p-3.5 shadow-2xl z-30">
+      <div class="space-y-1" id="main-tabs">
+        <div class="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-blue-200/80 flex items-center justify-between">
+          <span>প্রধান মেনুসমূহ (১১টি মডিউল)</span>
+          <button onclick="App.toggleSidebar()" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded" title="মেনু লুকান">✕</button>
+        </div>
+
+        <button onclick="App.switchTab('dashboard')" data-tab="dashboard" class="side-nav-btn active">
+          <span class="text-lg">🏠</span>
+          <span>১. ড্যাশবোর্ড ও সেটআপ</span>
+        </button>
+        <button onclick="App.switchTab('students')" data-tab="students" class="side-nav-btn">
+          <span class="text-lg">👨‍🎓</span>
+          <span>২. শিক্ষার্থী ভর্তি ও ডাটাবেস</span>
+        </button>
+        <button onclick="App.switchTab('idcards')" data-tab="idcards" class="side-nav-btn">
+          <span class="text-lg">🪪</span>
+          <span>৩. স্মার্ট আইডি কার্ড</span>
+        </button>
+        <button onclick="App.switchTab('attendance')" data-tab="attendance" class="side-nav-btn">
+          <span class="text-lg">📅</span>
+          <span>৪. মাসিক হাজিরা (শুক্র-শনি অফ)</span>
+        </button>
+        <button onclick="App.switchTab('admitseat')" data-tab="admitseat" class="side-nav-btn">
+          <span class="text-lg">🎫</span>
+          <span>৫. প্রবেশপত্র ও সিট প্ল্যান</span>
+        </button>
+        <button onclick="App.switchTab('subjects')" data-tab="subjects" class="side-nav-btn">
+          <span class="text-lg">📝</span>
+          <span>৬. বিষয় ও নম্বর এন্ট্রি (১ম/২য় পত্র)</span>
+        </button>
+        <button onclick="App.switchTab('results')" data-tab="results" class="side-nav-btn">
+          <span class="text-lg">🏆</span>
+          <span>৭. মার্কশিট ও মেধাক্রম (কুইক এডিট)</span>
+        </button>
+        <button onclick="App.switchTab('promotion')" data-tab="promotion" class="side-nav-btn">
+          <span class="text-lg">🚀</span>
+          <span>৮. টিক-মার্ক রোল প্রমোশন</span>
+        </button>
+        <button onclick="App.switchTab('agecalc')" data-tab="agecalc" class="side-nav-btn">
+          <span class="text-lg">⏳</span>
+          <span>৯. বয়স ক্যালকুলেটর ও ফিল্টার</span>
+        </button>
+        <button onclick="App.switchTab('certificates')" data-tab="certificates" class="side-nav-btn">
+          <span class="text-lg">📜</span>
+          <span>১০. প্রশংসাপত্র, টিসি ও বেতন রশিদ</span>
+        </button>
+        <button onclick="App.switchTab('qratt')" data-tab="qratt" class="side-nav-btn">
+          <span class="text-lg">📷</span>
+          <span>১১. QR স্ক্যান হাজিরা (লাইভ ক্যামেরা)</span>
+        </button>
+      </div>
+
+      <div class="mt-4 p-3 rounded-xl bg-white/10 border border-white/15 text-[11px] text-blue-100 space-y-1">
+        <div class="font-extrabold text-amber-300 flex items-center gap-1.5">
+          <span>⚡ রিয়েল-টাইম অটো-সিঙ্ক</span>
+        </div>
+        <p class="leading-snug text-blue-100/90">যেকোনো ডাটা সেভ করলেই পেজ রিফ্রেশ ছাড়া সাথে সাথে সকল টেবিল ও মার্কশিট আপডেট হবে।</p>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 min-w-0 p-4 md:p-6 space-y-6 overflow-x-hidden">
+
+      <!-- ==================== TAB 1: DASHBOARD & INSTITUTION SETUP ==================== -->
+      <section id="tab-dashboard" class="tab-section animate-section space-y-6">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div class="modern-card p-4 border-l-4 border-l-blue-600 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-bold text-slate-500 dark:text-slate-400">মোট শিক্ষার্থী (<span class="cur-session-label">2026</span>)</p>
+              <p id="stat-total-students" class="text-3xl font-extrabold text-blue-700 dark:text-blue-400 mt-1">0</p>
+            </div>
+            <div class="w-11 h-11 rounded-2xl bg-blue-500/15 text-blue-600 flex items-center justify-center text-xl">👥</div>
+          </div>
+          <div class="modern-card p-4 border-l-4 border-l-emerald-600 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-bold text-slate-500 dark:text-slate-400">৬ষ্ঠ - ৮ম (সাধারণ)</p>
+              <p id="stat-6to8" class="text-3xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">0</p>
+            </div>
+            <div class="w-11 h-11 rounded-2xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center text-xl">📘</div>
+          </div>
+          <div class="modern-card p-4 border-l-4 border-l-violet-600 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-bold text-slate-500 dark:text-slate-400">৯ম - ১০ম (বিজ্ঞান)</p>
+              <p id="stat-sci" class="text-3xl font-extrabold text-violet-700 dark:text-violet-400 mt-1">0</p>
+            </div>
+            <div class="w-11 h-11 rounded-2xl bg-violet-500/15 text-violet-600 flex items-center justify-center text-xl">🔬</div>
+          </div>
+          <div class="modern-card p-4 border-l-4 border-l-amber-500 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-bold text-slate-500 dark:text-slate-400">৯ম - ১০ম (মানবিক)</p>
+              <p id="stat-hum" class="text-3xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">0</p>
+            </div>
+            <div class="w-11 h-11 rounded-2xl bg-amber-500/15 text-amber-600 flex items-center justify-center text-xl">🌍</div>
+          </div>
+          <div class="modern-card p-4 border-l-4 border-l-rose-500 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-bold text-slate-500 dark:text-slate-400">৯ম - ১০ম (ব্যবসায় শিক্ষা)</p>
+              <p id="stat-bus" class="text-3xl font-extrabold text-rose-600 dark:text-rose-400 mt-1">0</p>
+            </div>
+            <div class="w-11 h-11 rounded-2xl bg-rose-500/15 text-rose-600 flex items-center justify-center text-xl">📊</div>
+          </div>
+        </div>
+
+        <div class="modern-card p-6">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100 dark:border-slate-800 pb-4 mb-5">
+            <div>
+              <h2 class="text-lg font-extrabold text-blue-900 dark:text-blue-300">প্রতিষ্ঠান প্রোফাইল, ওয়াটারমার্ক লোগো ও ডিজিটাল স্বাক্ষর সেটআপ</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">এখানে আপলোড করা লোগোটি স্বয়ংক্রিয়ভাবে মার্কশিট, প্রশংসাপত্র ও টিসির ব্যাকগ্রাউন্ডে জলছাপ (Watermark) হিসেবে বসবে।</p>
+            </div>
+            <button type="button" onclick="App.addSessionPrompt()" class="bg-blue-600/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 px-3.5 py-2 rounded-xl text-xs font-extrabold hover:bg-blue-600 hover:text-white transition">
+              + নতুন শিক্ষাবর্ষ যোগ করুন
+            </button>
+          </div>
+
+          <form id="school-settings-form" onsubmit="App.saveSettings(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <label class="block font-bold mb-1">প্রতিষ্ঠানের নাম (বাংলা) *</label>
+              <input type="text" id="set-name-bn" required class="w-full modern-input" placeholder="বিদ্যালয়ের নাম (বাংলায়)" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">School Name (English) *</label>
+              <input type="text" id="set-name-en" required class="w-full modern-input" placeholder="School name in English" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold mb-1">EIIN নম্বর *</label>
+                <input type="text" id="set-eiin" required class="w-full modern-input font-mono font-bold" placeholder="EIIN নম্বর" />
+              </div>
+              <div>
+                <label class="block font-bold mb-1">স্থাপিত সাল</label>
+                <input type="text" id="set-estd" class="w-full modern-input" placeholder="প্রতিষ্ঠার সাল" />
+              </div>
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="block font-bold mb-1">প্রতিষ্ঠানের পূর্ণ ঠিকানা</label>
+              <input type="text" id="set-address" class="w-full modern-input" placeholder="বিদ্যালয়ের পূর্ণ ঠিকানা" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">অ্যাডমিন পিন (PIN - নম্বর ও প্রমোশন লক)</label>
+              <input type="password" id="set-pin" class="w-full modern-input" placeholder="ঐচ্ছিক (যেমন: 1234)" />
+            </div>
+
+            <div class="border border-blue-200 dark:border-slate-700 rounded-xl p-3.5 bg-blue-50/40 dark:bg-slate-800/40 flex items-center gap-3.5">
+              <img id="prev-logo" class="w-16 h-16 object-contain border bg-white rounded-xl p-1 shadow-sm" src="" alt="Logo" />
+              <div class="flex-1">
+                <label class="block font-bold text-xs mb-1">প্রতিষ্ঠানের লোগো (ওয়াটারমার্ক ও হেডার)</label>
+                <input type="file" accept="image/*" onchange="App.handleSettingImage(event, 'logo')" class="text-xs w-full" />
+              </div>
+            </div>
+
+            <div class="border border-blue-200 dark:border-slate-700 rounded-xl p-3.5 bg-blue-50/40 dark:bg-slate-800/40 flex items-center gap-3.5">
+              <img id="prev-hm-sig" class="w-24 h-14 object-contain border bg-white rounded-xl p-1 shadow-sm" src="" alt="HM Signature" />
+              <div class="flex-1">
+                <label class="block font-bold text-xs mb-1">প্রধান শিক্ষকের স্বাক্ষর (PNG)</label>
+                <input type="file" accept="image/*" onchange="App.handleSettingImage(event, 'hmSig')" class="text-xs w-full" />
+              </div>
+            </div>
+
+            <div class="border border-blue-200 dark:border-slate-700 rounded-xl p-3.5 bg-blue-50/40 dark:bg-slate-800/40 flex items-center gap-3.5">
+              <img id="prev-ec-sig" class="w-24 h-14 object-contain border bg-white rounded-xl p-1 shadow-sm" src="" alt="Controller Signature" />
+              <div class="flex-1">
+                <label class="block font-bold text-xs mb-1">পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর (PNG)</label>
+                <input type="file" accept="image/*" onchange="App.handleSettingImage(event, 'ecSig')" class="text-xs w-full" />
+              </div>
+            </div>
+
+            <div class="md:col-span-3 flex justify-end gap-3 pt-2">
+              <button type="submit" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-lg transition active:scale-95">
+                💾 প্রতিষ্ঠানের তথ্য সংরক্ষণ করুন
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 2: STUDENT ADMISSION (STRICT GROUP-BASED 4TH SUBJECT) ==================== -->
+      <section id="tab-students" class="tab-section hidden animate-section space-y-6">
+        <div class="modern-card p-6">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-blue-100 dark:border-slate-800 pb-4 mb-5">
+            <div>
+              <h2 class="text-lg font-extrabold text-blue-900 dark:text-blue-300">শিক্ষার্থী ভর্তি ও ডাটাবেস (৯ম–১০ম শ্রেণীতে গ্রুপভিত্তিক নিখুঁত ৪র্থ বিষয় ও মেইন বিষয় সিলেকশন)</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">বিজ্ঞান বিভাগে জীববিজ্ঞান (138), উচ্চতর গণিত (126) ও কৃষিশিক্ষা (134) এর মধ্যে যেটি ৪র্থ বিষয় হবে, বাকি ১টি আবশ্যিক হবে এবং অন্যটি তালিকা থেকে বাদ যাবে।</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="App.downloadStudentTemplate()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm">
+                📄 নমুনা Excel টেমপ্লেট
+              </button>
+              <label class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm cursor-pointer">
+                📥 Excel বাল্ক ইমপোর্ট (.xlsx)
+                <input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="App.importStudentsExcel(event)" />
+              </label>
+              <button onclick="App.exportStudentsExcel()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm">
+                📤 তালিকা Excel এক্সপোর্ট
+              </button>
+            </div>
+          </div>
+
+          <form id="student-form" onsubmit="App.saveStudent(event)" class="grid grid-cols-1 md:grid-cols-4 gap-3.5 text-sm">
+            <input type="hidden" id="stu-edit-id" value="" />
+            <div>
+              <label class="block font-bold mb-1">ইউনিক আইডি (Auto ID)</label>
+              <input type="text" id="stu-uid" readonly class="w-full modern-input bg-blue-50/70 dark:bg-slate-800 font-mono font-extrabold text-blue-700 dark:text-blue-400" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">শিক্ষার্থীর নাম (বাংলা) *</label>
+              <input type="text" id="stu-name-bn" required class="w-full modern-input" placeholder="মোঃ তানভীর আহমেদ" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">Student Name (English) *</label>
+              <input type="text" id="stu-name-en" required class="w-full modern-input" placeholder="Md. Tanvir Ahmed" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block font-bold mb-1">১. শ্রেণী *</label>
+                <select id="stu-class" onchange="App.onStudentClassChange()" class="w-full modern-input font-extrabold border-blue-400">
+                  <option value="6">৬ষ্ঠ শ্রেণী</option>
+                  <option value="7">৭ম শ্রেণী</option>
+                  <option value="8">৮ম শ্রেণী</option>
+                  <option value="9">৯ম শ্রেণী</option>
+                  <option value="10">১০ম শ্রেণী</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold mb-1">২. বিভাগ *</label>
+                <select id="stu-group" onchange="App.populateOptionalSubjects()" class="w-full modern-input font-bold"></select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block font-bold mb-1">শ্রেণী রোল (Roll) *</label>
+              <input type="number" id="stu-roll" required min="1" class="w-full modern-input font-extrabold" placeholder="1" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">পিতার নাম *</label>
+              <input type="text" id="stu-father" required class="w-full modern-input" placeholder="মোঃ রফিকুল ইসলাম" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">মাতার নাম *</label>
+              <input type="text" id="stu-mother" required class="w-full modern-input" placeholder="রোকেয়া বেগম" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block font-bold mb-1">জন্ম তারিখ (DOB) *</label>
+                <input type="date" id="stu-dob" required class="w-full modern-input" />
+              </div>
+              <div>
+                <label class="block font-bold mb-1">রক্তের গ্রুপ</label>
+                <select id="stu-blood" class="w-full modern-input font-bold text-rose-600">
+                  <option value="">নির্বাচন</option>
+                  <option value="A+">A+</option><option value="A-">A-</option>
+                  <option value="B+">B+</option><option value="B-">B-</option>
+                  <option value="O+">O+</option><option value="O-">O-</option>
+                  <option value="AB+">AB+</option><option value="AB-">AB-</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block font-bold mb-1">অভিভাবকের মোবাইল *</label>
+              <input type="text" id="stu-mobile" required class="w-full modern-input font-mono" placeholder="017XXXXXXXX" />
+            </div>
+
+            <!-- Science Main Elective (138 vs 126) & 4th Subject Wrapper -->
+            <div id="stu-science-main-wrap" class="hidden">
+              <label class="block font-bold mb-1 text-violet-700 dark:text-violet-300">বিজ্ঞান ৩য় আবশ্যিক বিষয় *</label>
+              <select id="stu-main-elective" onchange="App.onScienceMainElectiveChange()" class="w-full modern-input border-violet-400 font-bold">
+                <option value="138">138 - জীববিজ্ঞান (আবশ্যিক)</option>
+                <option value="126">126 - উচ্চতর গণিত (আবশ্যিক)</option>
+              </select>
+            </div>
+
+            <div id="stu-optional-wrap" class="hidden">
+              <label class="block font-bold mb-1 text-indigo-700 dark:text-indigo-300">৪র্থ/ঐচ্ছিক বিষয় (৯ম-১০ম) *</label>
+              <select id="stu-optional" onchange="App.onOptionalSubjectChange()" class="w-full modern-input border-indigo-400 font-bold"></select>
+            </div>
+
+            <div class="md:col-span-2 flex items-center gap-3 border border-blue-200 dark:border-slate-700 rounded-xl px-3.5 py-2 bg-blue-50/30 dark:bg-slate-800/40">
+              <img id="stu-photo-prev" src="" alt="Photo" class="w-12 h-14 object-cover border bg-white rounded-lg shadow-sm" />
+              <div class="flex-1">
+                <label class="block font-bold text-xs">শিক্ষার্থীর ছবি (অটো কমপ্রেসড)</label>
+                <input type="file" accept="image/*" onchange="App.handleStudentPhoto(event)" class="text-xs w-full mt-0.5" />
+              </div>
+              <button type="button" onclick="App.resetStudentForm()" class="bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 px-3 py-2 rounded-lg text-xs font-bold">ক্লিয়ার</button>
+              <button type="submit" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-md">✔ ভর্তি / আপডেট করুন</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Smart Cascading Filter & Student Table -->
+        <div class="modern-card p-6">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4 bg-blue-500/5 border border-blue-500/20 p-3.5 rounded-xl">
+            <div class="flex flex-wrap items-center gap-3 text-sm">
+              <span class="font-extrabold text-blue-700 dark:text-blue-400">⚡ স্মার্ট ফিল্টার:</span>
+              <div>
+                <label class="text-xs font-bold text-slate-500 block">ধাপ ১: শ্রেণী নির্বাচন</label>
+                <select id="filter-stu-class" onchange="App.syncSmartGroupFilter('filter-stu-class','filter-stu-group', true); App.renderStudentTable()" class="modern-input font-bold">
+                  <option value="ALL">সকল শ্রেণী (৬ষ্ঠ - ১০ম)</option>
+                  <option value="6">৬ষ্ঠ শ্রেণী</option>
+                  <option value="7">৭ম শ্রেণী</option>
+                  <option value="8">৮ম শ্রেণী</option>
+                  <option value="9">৯ম শ্রেণী</option>
+                  <option value="10">১০ম শ্রেণী</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500 block">ধাপ ২: বিভাগ (স্বয়ংক্রিয়)</label>
+                <select id="filter-stu-group" onchange="App.renderStudentTable()" class="modern-input font-bold"></select>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500 block">দ্রুত অনুসন্ধান</label>
+                <input type="text" id="filter-stu-search" oninput="App.renderStudentTable()" placeholder="🔍 নাম, আইডি বা রোল..." class="modern-input w-56" />
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500 block">প্রতি পেজে</label>
+                <select id="stu-page-size" onchange="App.renderStudentTable()" class="modern-input font-bold">
+                  <option value="10">১০ জন</option>
+                  <option value="25" selected>২৫ জন</option>
+                  <option value="50">৫০ জন</option>
+                  <option value="100">১০০ জন</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500 block">প্রিন্ট পেজ (A4)</label>
+                <select id="stu-print-orient" class="modern-input font-bold">
+                  <option value="portrait">পোর্ট্রেট (লম্বা)</option>
+                  <option value="landscape">ল্যান্ডস্কেপ (আড়াআড়ি)</option>
+                </select>
+              </div>
+              <label class="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 self-end pb-2.5 cursor-pointer">
+                <input type="checkbox" id="stu-print-photo" checked /> ছবি সহ
+              </label>
+              <button type="button" onclick="App.printStudentList()" class="self-end bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md">
+                🖨 তালিকা প্রিন্ট (A4)
+              </button>
+            </div>
+            <div class="text-xs font-bold bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-xl shadow">
+              প্রাপ্ত শিক্ষার্থী: <span id="stu-count-badge" class="text-sm font-extrabold">0</span> জন
+            </div>
+          </div>
+
+          <div class="overflow-x-auto rounded-xl border border-blue-200 dark:border-slate-700">
+            <table class="w-full text-xs text-left border-collapse formal-table">
+              <thead>
+                <tr>
+                  <th>ছবি</th>
+                  <th>ইউনিক আইডি</th>
+                  <th class="text-center">রোল</th>
+                  <th>নাম (বাংলা ও ইংরেজি)</th>
+                  <th>শ্রেণী ও বিভাগ</th>
+                  <th>পিতা ও মাতা</th>
+                  <th>মোবাইল, রক্ত ও বয়স</th>
+                  <th id="th-optional-col">৪র্থ বিষয় (৯ম-১০ম)</th>
+                  <th class="text-center">অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody id="student-table-body" class="divide-y divide-slate-200 dark:divide-slate-700"></tbody>
+            </table>
+          </div>
+          <div id="stu-pager"></div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 3: SMART STUDENT ID CARD ==================== -->
+      <section id="tab-idcards" class="tab-section hidden animate-section space-y-6">
+        <div class="modern-card p-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 class="text-lg font-extrabold text-blue-900 dark:text-blue-300">স্ট্যান্ডার্ড স্মার্ট আইডি কার্ড (ছবি বামে • তথ্য মাঝে • বড় QR কোড ডানে)</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">রয়্যাল ব্লু এবং এমেরাল্ড গ্রেডিয়েন্ট হেডারযুক্ত প্রিন্ট-রেডি স্মার্ট আইডি কার্ড।</p>
+            </div>
+
+            <div class="flex flex-wrap items-end gap-2.5 text-sm">
+              <div>
+                <label class="text-xs font-bold text-slate-500 block">১. শ্রেণী</label>
+                <select id="id-class" onchange="App.syncSmartGroupFilter('id-class','id-group', true); App.generateIDCards(false)" class="modern-input font-bold">
+                  <option value="6">৬ষ্ঠ শ্রেণী</option>
+                  <option value="7">৭ম শ্রেণী</option>
+                  <option value="8">৮ম শ্রেণী</option>
+                  <option value="9">৯ম শ্রেণী</option>
+                  <option value="10">১০ম শ্রেণী</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500 block">২. বিভাগ</label>
+                <select id="id-group" onchange="App.generateIDCards(false)" class="modern-input font-bold"></select>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500 block">রোল/আইডি (ঐচ্ছিক)</label>
+                <input type="text" id="id-single-uid" oninput="App.generateIDCards(false)" placeholder="নির্দিষ্ট রোল বা আইডি" class="modern-input w-36 text-xs" />
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500 block">A4 লেআউট</label>
+                <select id="id-density" onchange="App.generateIDCards(false)" class="modern-input font-bold border-blue-400">
+                  <option value="6">প্রতি পেজে ৬টি (বড় সাইজ)</option>
+                  <option value="8" selected>প্রতি পেজে ৮টি (স্ট্যান্ডার্ড)</option>
+                  <option value="10">প্রতি পেজে ১০টি (সাশ্রয়ী)</option>
+                </select>
+              </div>
+              <button onclick="App.generateIDCards(false)" class="bg-blue-700 hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow">
+                👁 প্রিভিউ
+              </button>
+              <button onclick="App.generateIDCards(true)" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-lg">
+                🖨 A4 প্রিন্ট করুন
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="idcard-preview-box" class="modern-card p-6 overflow-x-auto"></div>
+      </section>
+
+      <!-- ==================== TAB 4: ATTENDANCE (AUTO FRI/SAT OFF + OVERRIDE) ==================== -->
+      <section id="tab-attendance" class="tab-section hidden animate-section space-y-6">
+        <div class="modern-card p-6">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100 dark:border-slate-800 pb-4 mb-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-lg font-extrabold text-blue-900 dark:text-blue-300">মাসিক ইন্টারঅ্যাক্টিভ হাজিরা (শুক্র ও শনিবার স্বয়ংক্রিয়ভাবে সাপ্তাহিক ছুটি 'W')</h2>
+                <span class="bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full">ক্লিক করে ছুটির দিনেও P দেওয়া যাবে</span>
+              </div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                ক্যালেন্ডার অনুযায়ী শুক্র ও শনিবার স্বয়ংক্রিয়ভাবে 'W' থাকবে। বিশেষ ক্লাস হলে ক্লিক করে P (উপস্থিত) দিতে পারবেন।
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <button onclick="App.markAllWorkingDaysPresent()" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-extrabold px-3.5 py-2 rounded-xl">
+                ✔ কর্মদিবসে সকলকে উপস্থিত (P) দিন
+              </button>
+              <button onclick="App.exportAttendanceExcel()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-2 rounded-xl">📤 Excel এক্সপোর্ট</button>
+              <label class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-3 py-2 rounded-xl cursor-pointer">
+                📥 Excel ইমপোর্ট
+                <input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="App.importAttendanceExcel(event)" />
+              </label>
+              <button onclick="App.printAttendanceSheet()" class="bg-indigo-700 hover:bg-indigo-600 text-white font-bold px-3.5 py-2 rounded-xl">🖨 হাজিরা শিট প্রিন্ট (A4)</button>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-end gap-3 mb-4 text-sm">
+            <div>
+              <label class="text-xs font-bold text-slate-500 block">১. শ্রেণী নির্বাচন</label>
+              <select id="att-class" onchange="App.syncSmartGroupFilter('att-class','att-group', false); App.loadAttendanceGrid()" class="modern-input font-bold">
+                <option value="6">৬ষ্ঠ শ্রেণী</option>
+                <option value="7">৭ম শ্রেণী</option>
+                <option value="8">৮ম শ্রেণী</option>
+                <option value="9">৯ম শ্রেণী</option>
+                <option value="10">১০ম শ্রেণী</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-500 block">২. বিভাগ (স্বয়ংক্রিয়)</label>
+              <select id="att-group" onchange="App.loadAttendanceGrid()" class="modern-input font-bold"></select>
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-500 block">৩. মাস নির্বাচন</label>
+              <select id="att-month" onchange="App.loadAttendanceGrid()" class="modern-input font-bold">
+                <option value="01">জানুয়ারি (January)</option>
+                <option value="02">ফেব্রুয়ারি (February)</option>
+                <option value="03">মার্চ (March)</option>
+                <option value="04">এপ্রিল (April)</option>
+                <option value="05">মে (May)</option>
+                <option value="06">জুন (June)</option>
+                <option value="07">জুলাই (July)</option>
+                <option value="08">আগস্ট (August)</option>
+                <option value="09">সেপ্টেম্বর (September)</option>
+                <option value="10">অক্টোবর (October)</option>
+                <option value="11" selected>নভেম্বর (November)</option>
+                <option value="12">ডিসেম্বর (December)</option>
+              </select>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 text-xs bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-xl">
+              <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">P = উপস্থিত</span>
+              <span class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold">A = অনুপস্থিত</span>
+              <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">L = ছুটি</span>
+              <span class="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold">W = শুক্র/শনি</span>
+            </div>
+
+            <button onclick="App.saveAttendanceGrid()" class="ml-auto bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold px-5 py-2.5 rounded-xl shadow-md">
+              💾 মাসিক হাজিরা সংরক্ষণ করুন
+            </button>
+          </div>
+
+          <div id="attendance-grid-container" class="overflow-x-auto"></div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 5: ADMIT CARD & SEAT PLAN GENERATOR ==================== -->
+      <section id="tab-admitseat" class="tab-section hidden animate-section space-y-6">
+        <div class="modern-card p-6">
+          <h2 class="text-lg font-extrabold text-blue-900 dark:text-blue-300 mb-3">কাগজ-সাশ্রয়ী প্রবেশপত্র (Admit Card) ও সিট প্ল্যান (Seat Plan) জেনারেটর</h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-6 gap-3 text-sm items-end">
+            <div>
+              <label class="block font-bold text-xs text-slate-500 mb-1">পরীক্ষার নাম</label>
+              <select id="as-exam" class="w-full modern-input font-semibold">
+                <option value="Half-Yearly">অর্ধবার্ষিক পরীক্ষা</option>
+                <option value="Annual">বার্ষিক পরীক্ষা</option>
+                <option value="Test">নির্বাচনী/টেস্ট পরীক্ষা (১০ম)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-xs text-slate-500 mb-1">১. শ্রেণী</label>
+              <select id="as-class" onchange="App.syncSmartGroupFilter('as-class','as-group', true)" class="w-full modern-input font-bold">
+                <option value="6">৬ষ্ঠ শ্রেণী</option>
+                <option value="7">৭ম শ্রেণী</option>
+                <option value="8">৮ম শ্রেণী</option>
+                <option value="9">৯ম শ্রেণী</option>
+                <option value="10">১০ম শ্রেণী</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-xs text-slate-500 mb-1">২. বিভাগ (Auto)</label>
+              <select id="as-group" class="w-full modern-input font-bold"></select>
+            </div>
+            <div>
+              <label class="block font-bold text-xs text-slate-500 mb-1">প্রবেশপত্র লেআউট (A4)</label>
+              <select id="admit-density" class="w-full modern-input font-bold">
+                <option value="4">প্রতি পেজে ৪টি প্রবেশপত্র</option>
+                <option value="6" selected>প্রতি পেজে ৬টি প্রবেশপত্র</option>
+                <option value="8">প্রতি পেজে ৮টি (সাশ্রয়ী)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-xs text-slate-500 mb-1">সিট প্ল্যান লেআউট (A4)</label>
+              <select id="seat-density" class="w-full modern-input font-bold">
+                <option value="10">প্রতি পেজে ১০টি স্লিপ</option>
+                <option value="12">প্রতি পেজে ১২টি স্লিপ</option>
+                <option value="15" selected>প্রতি পেজে ১৫টি স্লিপ</option>
+                <option value="18">প্রতি পেজে ১৮টি স্লিপ</option>
+              </select>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <button onclick="App.generateAdmitCards(true)" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-xl text-xs shadow">
+                🖨 প্রবেশপত্র প্রিন্ট (A4)
+              </button>
+              <button onclick="App.generateSeatPlans(true)" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-3 rounded-xl text-xs shadow">
+                🖨 সিট প্ল্যান প্রিন্ট (A4)
+              </button>
+            </div>
+          </div>
+
+          <div class="flex gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 text-xs">
+            <button onclick="App.generateAdmitCards(false)" class="bg-blue-100 dark:bg-slate-800 text-blue-900 dark:text-blue-300 font-bold px-3.5 py-1.5 rounded-lg">👁 প্রবেশপত্র প্রিভিউ দেখুন</button>
+            <button onclick="App.generateSeatPlans(false)" class="bg-blue-100 dark:bg-slate-800 text-blue-900 dark:text-blue-300 font-bold px-3.5 py-1.5 rounded-lg">👁 সিট প্ল্যান প্রিভিউ দেখুন</button>
+          </div>
+        </div>
+
+        <div id="admitseat-preview-box" class="modern-card p-6 overflow-x-auto">
+          <p class="text-center text-slate-400 text-sm py-8">প্রবেশপত্র অথবা সিট প্ল্যান জেনারেট করতে উপরের বাটনে ক্লিক করুন।</p>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 6: 4-STEP STRICT SUBJECT & MARK ENTRY (SEPARATE 1ST/2ND PAPERS) ==================== -->
+      <section id="tab-subjects" class="tab-section hidden animate-section space-y-6">
+        <div class="modern-card p-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs font-extrabold">
+            <button onclick="App.switchMarkSubTab('blank-sheet')" id="subtab-btn-blank" class="p-3 rounded-xl text-left transition bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md">
+              <div class="text-[10px] opacity-80 uppercase">ধাপ ১ (Step 1)</div>
+              <div class="text-sm mt-0.5">🖨 শিক্ষক নম্বর সংগ্রহ শিট প্রিন্ট</div>
+            </button>
+            <button onclick="App.switchMarkSubTab('bulk-entry')" id="subtab-btn-bulk" class="p-3 rounded-xl text-left transition bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+              <div class="text-[10px] opacity-75 uppercase">ধাপ ২ (Step 2 - Mode A)</div>
+              <div class="text-sm mt-0.5">⚡ বিষয়ভিত্তিক দ্রুত বাল্ক নম্বর এন্ট্রি</div>
+            </button>
+            <button onclick="App.switchMarkSubTab('single-entry')" id="subtab-btn-single" class="p-3 rounded-xl text-left transition bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+              <div class="text-[10px] opacity-75 uppercase">ধাপ ৩ (Step 3 - Mode B)</div>
+              <div class="text-sm mt-0.5">👤 একক শিক্ষার্থীর সকল বিষয় এন্ট্রি</div>
+            </button>
+            <button onclick="App.switchMarkSubTab('subject-config')" id="subtab-btn-config" class="p-3 rounded-xl text-left transition bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+              <div class="text-[10px] opacity-75 uppercase">ধাপ ৪ (Step 4 - NCTB Rule)</div>
+              <div class="text-sm mt-0.5">⚙ বিষয় ও নম্বর বন্টন কনফিগারেশন</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Common Selection Bar for Step 1 & Step 2 -->
+        <div id="mark-selector-bar" class="modern-card p-5 space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-3 text-sm items-end">
+            <div>
+              <label class="block font-bold text-xs text-slate-500 mb-1">পরীক্ষা নির্বাচন</label>
+              <select id="mk-exam" onchange="App.refreshMarkEntryView()" class="w-full modern-input font-semibold">
+                <option value="Half-Yearly">অর্ধবার্ষিক পরীক্ষা</option>
+                <option value="Annual">বার্ষিক পরীক্ষা</option>
+                <option value="Test">নির্বাচনী/টেস্ট পরীক্ষা (১০ম)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-xs text-slate-500 mb-1">১. শ্রেণী নির্বাচন</label>
+              <select id="mk-class" onchange="App.onMarkClassChange()" class="w-full modern-input font-bold">
+                <option value="6">৬ষ্ঠ শ্রেণী</option>
+                <option value="7">৭ম শ্রেণী</option>
+                <option value="8">৮ম শ্রেণী</option>
+                <option value="9">৯ম শ্রেণী</option>
+                <option value="10">১০ম শ্রেণী</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-xs text-slate-500 mb-1">২. বিভাগ (স্বয়ংক্রিয়)</label>
+              <select id="mk-group" onchange="App.populateMarkSubjectsDropdown()" class="w-full modern-input font-bold"></select>
+            </div>
+            <div>
+              <label class="block font-bold text-xs text-slate-500 mb-1">৩. বিষয় (বাংলা/ইংরেজি ১ম ও ২য় পত্র আলাদা)</label>
+              <select id="mk-subject" onchange="App.refreshMarkEntryView()" class="w-full modern-input font-bold border-blue-400"></select>
+            </div>
+            <div>
+              <button onclick="App.printBlankTeacherSheet()" class="w-full bg-blue-700 hover:bg-blue-600 text-white font-bold py-2.5 px-3 rounded-xl text-xs shadow">
+                🖨 ফাঁকা নম্বর শিট প্রিন্ট (A4)
+              </button>
+            </div>
+          </div>
+
+          <div id="subject-limit-banner" class="grid grid-cols-2 md:grid-cols-6 gap-2.5 pt-2 border-t border-blue-100 dark:border-slate-800 text-xs"></div>
+        </div>
+
+        <!-- STEP 1 VIEW: Printable Blank Teacher Sheet -->
+        <div id="mark-view-blank" class="modern-card p-6">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-extrabold text-blue-900 dark:text-blue-300">ধাপ ১: বিষয়ভিত্তিক ফাঁকা নম্বর সংগ্রহ শিট (ঐচ্ছিক/৪র্থ বিষয় নেওয়া শিক্ষার্থীদের নামের পাশে অটো ব্যাজ থাকবে)</h3>
+            <button onclick="App.printBlankTeacherSheet()" class="bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow">🖨 A4 প্রিন্ট করুন</button>
+          </div>
+          <div id="blank-sheet-preview" class="overflow-x-auto"></div>
+        </div>
+
+        <!-- STEP 2 VIEW: Strict Validated Bulk Mark Entry -->
+        <div id="mark-view-bulk" class="hidden modern-card p-6">
+          <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+            <div>
+              <h3 class="font-extrabold text-blue-900 dark:text-blue-300">ধাপ ২: কঠোর ভ্যালিডেশনযুক্ত দ্রুত ডিজিটাল নম্বর এন্ট্রি গ্রিড</h3>
+              <p class="text-xs text-slate-500">যে শিক্ষার্থী যে ঐচ্ছিক/৪র্থ বিষয় নেয়নি তাকে স্বয়ংক্রিয়ভাবে ফিল্টার করে বাদ দেওয়া হয়, যাতে ভুলবশত অন্য বিষয়ে নম্বর না পড়ে।</p>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="App.exportMarksExcel()" class="bg-blue-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl">📤 Excel এক্সপোর্ট</button>
+              <label class="bg-amber-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl cursor-pointer">
+                📥 Excel ইমপোর্ট
+                <input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="App.importMarksExcel(event)" />
+              </label>
+              <button onclick="App.saveBulkMarks()" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-extrabold px-5 py-2 rounded-xl shadow-md">💾 সকল নম্বর সংরক্ষণ করুন</button>
+            </div>
+          </div>
+          <div id="bulk-mark-grid" class="overflow-x-auto"></div>
+        </div>
+
+        <!-- STEP 3 VIEW: Single Student All Subjects Mark Entry -->
+        <div id="mark-view-single" class="hidden modern-card p-6 space-y-4">
+          <div class="flex flex-wrap items-end gap-3 text-sm border-b border-slate-200 dark:border-slate-800 pb-4">
+            <div>
+              <label class="block font-bold mb-1">পরীক্ষা</label>
+              <select id="smk-exam" onchange="App.loadSingleStudentMarks()" class="modern-input font-semibold">
+                <option value="Half-Yearly">অর্ধবার্ষিক পরীক্ষা</option>
+                <option value="Annual">বার্ষিক পরীক্ষা</option>
+                <option value="Test">নির্বাচনী/টেস্ট পরীক্ষা</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">১. শ্রেণী</label>
+              <select id="smk-class" onchange="App.syncSmartGroupFilter('smk-class','smk-group', true); App.populateSingleStudentDropdown()" class="modern-input font-bold">
+                <option value="6">৬ষ্ঠ শ্রেণী</option>
+                <option value="7">৭ম শ্রেণী</option>
+                <option value="8">৮ম শ্রেণী</option>
+                <option value="9">৯ম শ্রেণী</option>
+                <option value="10">১০ম শ্রেণী</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">২. বিভাগ</label>
+              <select id="smk-group" onchange="App.populateSingleStudentDropdown()" class="modern-input font-bold"></select>
+            </div>
+            <div class="flex-1 min-w-[220px]">
+              <label class="block font-bold mb-1">৩. শিক্ষার্থী নির্বাচন করুন</label>
+              <select id="smk-student" onchange="App.loadSingleStudentMarks()" class="w-full modern-input font-bold"></select>
+            </div>
+            <button onclick="App.saveSingleStudentMarks()" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs shadow-md">
+              💾 এই শিক্ষার্থীর সকল নম্বর সেভ করুন
+            </button>
+          </div>
+          <div id="single-student-mark-grid" class="overflow-x-auto"></div>
+        </div>
+
+        <!-- STEP 4 VIEW: NCTB Subject Configuration -->
+        <div id="mark-view-config" class="hidden modern-card p-6 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+            <div>
+              <h3 class="font-extrabold text-blue-900 dark:text-blue-300">ধাপ ৪: বাংলাদেশ শিক্ষা বোর্ড (NCTB) বিষয় কাঠামো (বাংলা ১ম/২য় ও ইংরেজি ১ম/২য় পত্র আলাদা)</h3>
+              <p class="text-xs text-slate-500">৬ষ্ঠ-৮ম শ্রেণীতে বাংলা ২য় ও ইংরেজি ২য় পত্রে ৫০ নম্বর এবং ৯ম-১০ম শ্রেণীতে ১০০ নম্বরের বোর্ড স্ট্যান্ডার্ড বন্টন দেওয়া আছে।</p>
+            </div>
+            <button onclick="App.resetDefaultSubjects()" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl">
+              ↺ ডিফল্ট NCTB কারিকুলামে রিসেট করুন
+            </button>
+          </div>
+
+          <form onsubmit="App.addCustomSubject(event)" class="grid grid-cols-2 md:grid-cols-8 gap-2.5 text-xs bg-blue-50/50 dark:bg-slate-800/50 p-3.5 rounded-xl border border-blue-200 dark:border-slate-700">
+            <input type="text" id="sub-code" required placeholder="বিষয় কোড (যেমন: 101)" class="modern-input" />
+            <input type="text" id="sub-name" required placeholder="বিষয়ের নাম (বাংলা)" class="modern-input md:col-span-2" />
+            <select id="sub-classes" class="modern-input">
+              <option value="6,7,8">৬ষ্ঠ - ৮ম শ্রেণী</option>
+              <option value="9,10">৯ম - ১০ম শ্রেণী</option>
+            </select>
+            <select id="sub-group" class="modern-input">
+              <option value="ALL">সকল বিভাগ (আবশ্যিক)</option>
+              <option value="General">সাধারণ (৬ষ্ঠ-৮ম)</option>
+              <option value="Science">বিজ্ঞান</option>
+              <option value="Humanities">মানবিক</option>
+              <option value="Business Studies">ব্যবসায় শিক্ষা</option>
+            </select>
+            <select id="sub-type" class="modern-input" title="৯ম-১০ম শ্রেণীর জন্য: আবশ্যিক নাকি ঐচ্ছিক/৪র্থ বিষয়">
+              <option value="compulsory">আবশ্যিক বিষয়</option>
+              <option value="optional">ঐচ্ছিক / ৪র্থ বিষয় (৯ম-১০ম)</option>
+            </select>
+            <div class="grid grid-cols-3 gap-1">
+              <input type="number" id="sub-cq" value="70" min="0" max="100" required placeholder="CQ/লিখিত" class="modern-input text-center px-1" />
+              <input type="number" id="sub-mcq" value="30" min="0" max="100" required placeholder="MCQ/ব্যাকরণ" class="modern-input text-center px-1" />
+              <input type="number" id="sub-prac" value="0" min="0" max="100" required placeholder="ব্যবহারিক" class="modern-input text-center px-1" />
+            </div>
+            <button type="submit" class="bg-blue-600 text-white font-bold rounded-xl px-3 py-2">+ বিষয় যুক্ত করুন</button>
+          </form>
+
+          <div id="subject-config-table" class="overflow-x-auto"></div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 7: WATERMARK A4 MARKSHEET, TABULATION & MERIT LIST (WITH QUICK EDIT MODAL) ==================== -->
+      <section id="tab-results" class="tab-section hidden animate-section space-y-6">
+        <div class="modern-card p-6">
+          <div class="mb-4">
+            <h2 class="text-lg font-extrabold text-blue-900 dark:text-blue-300">আধুনিক ওয়াটারমার্ক মার্কশিট (১ম ও ২য় পত্র সমন্বিত বোর্ড গ্রেডিং), ট্যাবুলেশন ও কুইক মার্কস এডিটর</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">মেধাক্রম তালিকার <strong>"✏️ নম্বর এডিট"</strong> বাটনে ক্লিক করে পপ-আপ উইন্ডোতে এক নজরে যেকোনো শিক্ষার্থীর সব বিষয়ের নম্বর তাৎক্ষণিক পরিবর্তন করতে পারবেন।</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-3 text-sm items-end">
+            <div>
+              <label class="block font-bold text-xs text-slate-500 mb-1">ফলাফল / মার্কশিট মোড</label>
+              <select id="res-mode" onchange="App.processAndRenderResults()" class="w-full modern-input font-bold">
+                <option value="Half-Yearly">১. অর্ধবার্ষিক পরীক্ষার ফলাফল</option>
+                <option value="Annual">২. বার্ষিক পরীক্ষার একক ফলাফল</option>
+                <option value="Combined">৩. বার্ষিক ও অর্ধবার্ষিক সমন্বিত ফলাফল</option>
+                <option value="Test">৪. ১০ম শ্রেণী নির্বাচনী (টেস্ট) ফলাফল</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-xs text-slate-500 mb-1">১. শ্রেণী নির্বাচন</label>
+              <select id="res-class" onchange="App.syncSmartGroupFilter('res-class','res-group', false); App.processAndRenderResults()" class="w-full modern-input font-bold">
+                <option value="6">৬ষ্ঠ শ্রেণী</option>
+                <option value="7">৭ম শ্রেণী</option>
+                <option value="8">৮ম শ্রেণী</option>
+                <option value="9">৯ম শ্রেণী</option>
+                <option value="10">১০ম শ্রেণী</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-xs text-slate-500 mb-1">২. বিভাগ (স্বয়ংক্রিয়)</label>
+              <select id="res-group" onchange="App.processAndRenderResults()" class="w-full modern-input font-bold"></select>
+            </div>
+            <div class="md:col-span-2 flex flex-wrap gap-2">
+              <button onclick="App.showResultSubView('merit')" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow">
+                🏆 মেধাক্রম তালিকা
+              </button>
+              <button onclick="App.showResultSubView('tabulation')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow">
+                📊 ট্যাবুলেশন শিট
+              </button>
+              <button onclick="App.printAllMarksheets()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-lg">
+                🖨 সকলের মার্কশিট প্রিন্ট (A4)
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-5 pt-4 border-t border-blue-100 dark:border-slate-800">
+            <div class="flex flex-wrap items-end gap-3 mb-2">
+              <div class="flex-1 min-w-[16rem]">
+                <label class="block font-extrabold text-xs text-teal-800 dark:text-teal-300 mb-1">🔎 যেকোনো শ্রেণীর শিক্ষার্থী খুঁজে নম্বর পরিবর্তন করুন (নাম / আইডি / রোল)</label>
+                <input type="text" id="res-search" oninput="App.searchStudentForMarks()" onkeydown="App.onResultSearchKey(event)" autocomplete="off" placeholder="যেমন: রহিম, 2610001 বা রোল নম্বর..." class="w-full modern-input font-bold" />
+              </div>
+              <div>
+                <label class="block font-bold text-xs text-slate-500 mb-1">কোন পরীক্ষার নম্বর</label>
+                <select id="res-search-exam" class="modern-input font-bold">
+                  <option value="Half-Yearly">অর্ধবার্ষিক</option>
+                  <option value="Annual">বার্ষিক</option>
+                  <option value="Test">নির্বাচনী (টেস্ট)</option>
+                </select>
+              </div>
+            </div>
+            <div id="res-search-results"><div class="text-xs text-slate-400 py-2">নাম, আইডি বা রোল লিখুন — যেকোনো শ্রেণীর (৬ষ্ঠ–১০ম) শিক্ষার্থী পাওয়া যাবে।</div></div>
+          </div>
+        </div>
+
+        <div id="result-kpi-strip" class="grid grid-cols-2 md:grid-cols-6 gap-3"></div>
+        <div id="result-display-container" class="modern-card p-6 overflow-x-auto"></div>
+      </section>
+
+      <!-- ==================== TAB 8: CHECKBOX-BASED SELECTIVE NEXT-CLASS PROMOTION ==================== -->
+      <section id="tab-promotion" class="tab-section hidden animate-section space-y-6">
+        <div class="modern-card p-6 space-y-4">
+          <div class="border-b border-blue-100 dark:border-slate-800 pb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 class="text-lg font-extrabold text-blue-900 dark:text-blue-300">টিক-মার্ক ভিত্তিক পরবর্তী শ্রেণীতে উত্তোলন (Selective Checkbox Auto-Roll Promotion)</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">টিক মার্ক (✔) দেওয়া শিক্ষার্থীরাই শুধুমাত্র পরবর্তী শ্রেণীতে মেধাক্রম অনুযায়ী নতুন রোলসহ উত্তোলিত হবে।</p>
+            </div>
+            <div class="flex gap-2 text-xs">
+              <button onclick="App.togglePromotionCheckboxes('PASSED')" class="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-extrabold px-3 py-1.5 rounded-xl">
+                ✔ শুধুমাত্র উত্তীর্ণদের টিক দিন
+              </button>
+              <button onclick="App.togglePromotionCheckboxes('ALL')" class="bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 font-extrabold px-3 py-1.5 rounded-xl">
+                ☑ সবাইকে টিক দিন
+              </button>
+              <button onclick="App.togglePromotionCheckboxes('NONE')" class="bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30 font-extrabold px-3 py-1.5 rounded-xl">
+                ☐ সকল টিক তুলে দিন
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-6 gap-3 text-sm items-end bg-blue-50/40 dark:bg-slate-800/40 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
+            <div>
+              <label class="block font-bold text-xs mb-1">বর্তমান শিক্ষাবর্ষ</label>
+              <input type="text" id="promo-from-session" readonly class="w-full modern-input bg-slate-200 dark:bg-slate-700 font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold text-xs mb-1">১. বর্তমান শ্রেণী</label>
+              <select id="promo-from-class" onchange="App.syncSmartGroupFilter('promo-from-class','promo-from-group', false); App.previewPromotion()" class="w-full modern-input font-bold">
+                <option value="6">৬ষ্ঠ শ্রেণী ➔ ৭ম শ্রেণী</option>
+                <option value="7">৭ম শ্রেণী ➔ ৮ম শ্রেণী</option>
+                <option value="8">৮ম শ্রেণী ➔ ৯ম শ্রেণী</option>
+                <option value="9">৯ম শ্রেণী ➔ ১০ম শ্রেণী</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-xs mb-1">২. বর্তমান বিভাগ</label>
+              <select id="promo-from-group" onchange="App.previewPromotion()" class="w-full modern-input font-bold"></select>
+            </div>
+            <div id="promo-target-group-wrap" class="hidden">
+              <label class="block font-bold text-xs text-indigo-700 dark:text-indigo-300 mb-1">৯ম শ্রেণীতে নতুন বিভাগ</label>
+              <select id="promo-to-group" class="w-full modern-input font-bold border-indigo-400">
+                <option value="Science">বিজ্ঞান (Science)</option>
+                <option value="Humanities">মানবিক (Humanities)</option>
+                <option value="Business Studies">ব্যবসায় শিক্ষা</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-xs mb-1">নতুন শিক্ষাবর্ষ (গন্তব্য)</label>
+              <select id="promo-to-session" class="w-full modern-input font-extrabold text-emerald-600"></select>
+            </div>
+            <div>
+              <button onclick="App.executePromotion()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold py-2.5 px-4 rounded-xl shadow-lg text-xs">
+                🚀 টিক দেওয়া (<span id="promo-selected-count">0</span> জন) উত্তোলন করুন
+              </button>
+            </div>
+          </div>
+
+          <div id="promotion-preview-box" class="overflow-x-auto"></div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 9: STUDENT AGE CALCULATOR & FILTER (NEW MODULE) ==================== -->
+      <section id="tab-agecalc" class="tab-section hidden animate-section space-y-6">
+        <div class="modern-card p-6 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100 dark:border-slate-800 pb-4">
+            <div>
+              <h2 class="text-lg font-extrabold text-blue-900 dark:text-blue-300">⏳ শিক্ষার্থীর বয়স ক্যালকুলেটর ও বয়স সীমা ফিল্টার (বছর, মাস, দিন ও মোট দিন)</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">আজকের তারিখ অথবা যেকোনো নির্দিষ্ট তারিখের সাপেক্ষে সকল শিক্ষার্থীর নিখুঁত বয়স এবং ইনলাইন জন্মতারিখ আপডেট করার সুবিধা।</p>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="App.exportAgeListExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow">📤 বয়স তালিকা Excel</button>
+              <button onclick="App.printAgeList()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow">🖨 বয়স রিপোর্ট প্রিন্ট (A4)</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 text-sm items-end bg-blue-50/40 dark:bg-slate-800/40 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
+            <div>
+              <label class="block font-bold text-xs text-slate-500 mb-1">১. শ্রেণী</label>
+              <select id="age-class" onchange="App.syncSmartGroupFilter('age-class','age-group', true); App.renderAgeCalculatorTable()" class="w-full modern-input font-bold">
+                <option value="ALL">সকল শ্রেণী</option>
+                <option value="6">৬ষ্ঠ শ্রেণী</option>
+                <option value="7">৭ম শ্রেণী</option>
+                <option value="8">৮ম শ্রেণী</option>
+                <option value="9">৯ম শ্রেণী</option>
+                <option value="10">১০ম শ্রেণী</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-xs text-slate-500 mb-1">২. বিভাগ</label>
+              <select id="age-group" onchange="App.renderAgeCalculatorTable()" class="w-full modern-input font-bold"></select>
+            </div>
+            <div>
+              <label class="block font-bold text-xs text-blue-700 dark:text-blue-300 mb-1">হিসাবের তারিখ (আজকের দিন)</label>
+              <input type="date" id="age-ref-date" onchange="App.renderAgeCalculatorTable()" class="w-full modern-input font-bold border-blue-400" />
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <div>
+                <label class="block font-bold text-xs text-slate-500 mb-1">সর্বনিম্ন বছর</label>
+                <input type="number" id="age-min-yr" oninput="App.renderAgeCalculatorTable()" placeholder="যেমন: 10" class="w-full modern-input text-center" />
+              </div>
+              <div>
+                <label class="block font-bold text-xs text-slate-500 mb-1">সর্বোচ্চ বছর</label>
+                <input type="number" id="age-max-yr" oninput="App.renderAgeCalculatorTable()" placeholder="যেমন: 18" class="w-full modern-input text-center" />
+              </div>
+            </div>
+            <div>
+              <label class="block font-bold text-xs text-slate-500 mb-1">নাম/আইডি খুঁজুন</label>
+              <input type="text" id="age-search" oninput="App.renderAgeCalculatorTable()" placeholder="🔍 নাম বা রোল..." class="w-full modern-input" />
+            </div>
+            <div>
+              <button onclick="App.resetAgeFilters()" class="w-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold py-2.5 px-3 rounded-xl text-xs">
+                ↺ ফিল্টার রিসেট
+              </button>
+            </div>
+          </div>
+
+          <div id="age-kpi-strip" class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs"></div>
+          <div id="age-table-container" class="overflow-x-auto"></div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 10: TESTIMONIAL, TC & FEE RECEIPT GENERATOR (NEW MODULE) ==================== -->
+      <section id="tab-certificates" class="tab-section hidden animate-section space-y-5">
+        <!-- ধরন নির্বাচন -->
+        <div class="modern-card p-5">
+          <div class="mb-3">
+            <h2 class="text-lg font-extrabold text-blue-900 dark:text-blue-300">📜 সনদ, ছাড়পত্র ও বেতন রশিদ কেন্দ্র</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">ধরন বেছে নিন → শিক্ষার্থী খুঁজুন → ডানে লাইভ প্রিভিউ দেখুন → প্রিন্ট বা সংরক্ষণ করুন।</p>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" role="tablist">
+            <button type="button" id="cert-btn-testimonial" class="cm-tile active" aria-pressed="true" onclick="App.switchCertSubTab('testimonial')">
+              <span class="cm-ic">🎓</span><span class="cm-tt">প্রশংসাপত্র</span><span class="cm-ds">Testimonial • QR ও ভেরিফিকেশন কোডসহ</span>
+            </button>
+            <button type="button" id="cert-btn-tc" class="cm-tile" aria-pressed="false" onclick="App.switchCertSubTab('tc')">
+              <span class="cm-ic">📄</span><span class="cm-tt">বিদ্যালয় ছাড়পত্র (TC)</span><span class="cm-ds">Transfer Certificate • সিকিউরড QR</span>
+            </button>
+            <button type="button" id="cert-btn-receipt" class="cm-tile" aria-pressed="false" onclick="App.switchCertSubTab('receipt')">
+              <span class="cm-ic">💳</span><span class="cm-tt">বেতন ও ফি রশিদ</span><span class="cm-ds">একজন বা একাধিক শিক্ষার্থী • ছাড়/বকেয়া হিসাব</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+          <!-- বাম: কন্ট্রোল -->
+          <div class="xl:col-span-5 space-y-4">
+            <div class="modern-card p-4 space-y-3">
+              <div class="cm-sec"><i>১</i> শিক্ষার্থী নির্বাচন</div>
+              <div id="cert-search-wrap" class="relative">
+                <input type="text" id="cert-search" oninput="App.certSearch()" onkeydown="App.onCertSearchKey(event)" onfocus="App.certSearch()" autocomplete="off"
+                  placeholder="🔍 নাম, আইডি বা রোল লিখে যেকোনো শ্রেণীর শিক্ষার্থী খুঁজুন..." class="modern-input w-full font-bold" />
+                <div id="cert-search-results" class="hidden"></div>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="cm-lbl">শ্রেণী</label>
+                  <select id="cert-class" onchange="App.syncSmartGroupFilter('cert-class','cert-group', true); App.onCertFilterChange()" class="w-full modern-input font-bold">
+                    <option value="6">৬ষ্ঠ শ্রেণী</option>
+                    <option value="7">৭ম শ্রেণী</option>
+                    <option value="8">৮ম শ্রেণী</option>
+                    <option value="9">৯ম শ্রেণী</option>
+                    <option value="10" selected>১০ম শ্রেণী</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="cm-lbl">বিভাগ</label>
+                  <select id="cert-group" onchange="App.onCertFilterChange()" class="w-full modern-input font-bold"></select>
+                </div>
+              </div>
+              <div>
+                <label class="cm-lbl">তালিকা থেকে বাছুন</label>
+                <select id="cert-student" onchange="App.onCertStudentChange()" class="w-full modern-input font-bold"></select>
+              </div>
+              <div id="cert-stu-card" class="cm-stu-card"></div>
+            </div>
+
+            <!-- সনদের তথ্য -->
+            <div id="cert-extra-fields" class="modern-card p-4 space-y-3">
+              <div class="cm-sec"><i>২</i> সনদের তথ্য</div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="cm-lbl">স্মারক / ক্রমিক নং</label>
+                  <input type="text" id="cert-serial" oninput="App.renderCertificatePreview()" placeholder="স্মারক নম্বর লিখুন" class="w-full modern-input font-bold" />
+                </div>
+                <div>
+                  <label class="cm-lbl">প্রদানের তারিখ</label>
+                  <input type="date" id="cert-date" onchange="App.renderCertificatePreview()" class="w-full modern-input font-bold" />
+                </div>
+              </div>
+              <div id="cert-f-exam">
+                <label class="cm-lbl">কোন পরীক্ষায় উত্তীর্ণ</label>
+                <input type="text" id="cert-exam-pass" list="cert-exam-list" value="বার্ষিক পরীক্ষা" oninput="App.renderCertificatePreview()" class="w-full modern-input font-bold" />
+                <datalist id="cert-exam-list"><option value="বার্ষিক পরীক্ষা"></option><option value="নির্বাচনী (টেস্ট) পরীক্ষা"></option><option value="এসএসসি পরীক্ষা"></option></datalist>
+              </div>
+              <div id="cert-f-gpa">
+                <label class="cm-lbl">জিপিএ (ফাঁকা রাখলে ফলাফল থেকে স্বয়ংক্রিয়)</label>
+                <input type="text" id="cert-gpa-custom" oninput="App.renderCertificatePreview()" placeholder="যেমন: 5.00 (A+)" class="w-full modern-input font-bold" />
+              </div>
+              <div id="cert-f-reason" class="hidden">
+                <label class="cm-lbl">বিদ্যালয় ত্যাগের কারণ</label>
+                <input type="text" id="cert-tc-reason" value="অভিভাবকের ইচ্ছা ও স্থানান্তরজনিত কারণে" oninput="App.renderCertificatePreview()" class="w-full modern-input font-bold" />
+              </div>
+            </div>
+
+            <!-- ফি প্যানেল -->
+            <div id="cert-fee-fields" class="hidden space-y-4">
+              <div class="modern-card p-4 space-y-3">
+                <div class="cm-sec"><i>২</i> কার জন্য রশিদ?</div>
+                <div class="cm-seg">
+                  <button type="button" id="fee-mode-single" class="active" onclick="App.setFeeMode('single')">👤 একজন শিক্ষার্থী</button>
+                  <button type="button" id="fee-mode-multi" onclick="App.setFeeMode('multi')">👥 একাধিক শিক্ষার্থী</button>
+                </div>
+                <div id="fee-multi-wrap" class="hidden space-y-2">
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <input type="text" id="fee-multi-search" oninput="App.renderFeeMultiList()" placeholder="🔍 তালিকায় খুঁজুন..." class="modern-input text-xs flex-1 min-w-[8rem]" />
+                    <button type="button" onclick="App.feeSelAll()" class="cm-tb-btn">সব</button>
+                    <button type="button" onclick="App.feeSelUnpaid()" class="cm-tb-btn" title="এই মাসে যাদের রশিদ নেই">বাকি যারা</button>
+                    <button type="button" onclick="App.feeSelNone()" class="cm-tb-btn">কেউ না</button>
+                  </div>
+                  <div id="fee-multi-list" class="cm-multi-list"></div>
+                  <div id="fee-multi-count" class="text-xs font-extrabold text-blue-700 dark:text-blue-300">০ জন নির্বাচিত</div>
+                </div>
+              </div>
+
+              <div class="modern-card p-4 space-y-3">
+                <div class="cm-sec"><i>৩</i> মাস, তারিখ ও রশিদ নম্বর</div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div><label class="cm-lbl">কোন মাসের ফি</label><select id="fee-month" onchange="App.onFeeChange(true)" class="w-full modern-input font-bold"></select></div>
+                  <div><label class="cm-lbl">আদায়ের তারিখ</label><input type="date" id="fee-date" onchange="App.onFeeChange()" class="w-full modern-input font-bold" /></div>
+                  <div><label class="cm-lbl">রশিদ নং (শুরুর নম্বর)</label><input type="text" id="fee-no" oninput="App.onFeeNoInput()" class="w-full modern-input font-mono font-bold" /></div>
+                  <div><label class="cm-lbl">পেমেন্ট মাধ্যম</label><select id="fee-method" onchange="App.onFeeChange()" class="w-full modern-input font-bold"></select></div>
+                  <div><label class="cm-lbl">গ্রহণকারীর নাম</label><input type="text" id="fee-by" oninput="App.onFeeChange()" placeholder="ক্যাশিয়ারের নাম" class="w-full modern-input font-bold" /></div>
+                  <div><label class="cm-lbl">মন্তব্য (ঐচ্ছিক)</label><input type="text" id="fee-note" oninput="App.onFeeChange()" placeholder="যেমন: বিলম্ব ফিসহ" class="w-full modern-input" /></div>
+                </div>
+              </div>
+
+              <div class="modern-card p-4 space-y-3">
+                <div class="cm-sec"><i>৪</i> ফি-এর খাত ও পরিমাণ (প্রতি শিক্ষার্থী)</div>
+                <div id="fee-presets" class="flex flex-wrap gap-1.5"></div>
+                <div id="fee-items" class="space-y-1.5"></div>
+                <button type="button" onclick="App.addFeeItem()" class="text-xs font-extrabold text-blue-700 dark:text-blue-300 hover:underline">＋ নতুন খাত যোগ করুন</button>
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                  <div><label class="cm-lbl">ছাড় / মওকুফ (৳, প্রতি শিক্ষার্থী)</label><input type="number" min="0" step="any" id="fee-discount" oninput="App.onFeeChange()" placeholder="০" class="w-full modern-input font-mono font-bold" /></div>
+                  <div id="fee-paid-wrap"><label class="cm-lbl">জমা (৳) — ফাঁকা = পূর্ণ পরিশোধ</label><input type="number" min="0" step="any" id="fee-paid" oninput="App.onFeeChange()" placeholder="পূর্ণ" class="w-full modern-input font-mono font-bold" /></div>
+                </div>
+                <div id="fee-summary" class="cm-sum"></div>
+              </div>
+
+              <div class="modern-card p-4 space-y-3">
+                <div class="cm-sec"><i>৫</i> প্রিন্ট লেআউট</div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div><label class="cm-lbl">পেজের দিক</label><select id="fee-orient" onchange="App.onFeeChange()" class="w-full modern-input font-bold text-xs"><option value="portrait">লম্বালম্বি</option><option value="landscape">আড়াআড়ি</option></select></div>
+                  <div><label class="cm-lbl">প্রতি পেজে রশিদ</label><select id="fee-frames" onchange="App.onFeeChange()" class="w-full modern-input font-bold text-xs"><option value="1">১টি</option><option value="2" selected>২টি</option><option value="3">৩টি</option><option value="4">৪টি</option><option value="6">৬টি</option><option value="8">৮টি</option></select></div>
+                  <div><label class="cm-lbl">কপি (প্রতি জন)</label><select id="fee-copies" onchange="App.onFeeChange()" class="w-full modern-input font-bold text-xs"><option value="1">১টি</option><option value="2" selected>২টি (অফিস+শিক্ষার্থী)</option><option value="3">৩টি</option><option value="4">৪টি</option></select></div>
+                </div>
+                <div class="grid grid-cols-1 gap-2">
+                  <button type="button" onclick="App.saveFeePayments(true)" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold py-3 rounded-xl shadow-lg text-sm">💾 সংরক্ষণ ও প্রিন্ট করুন</button>
+                  <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="App.saveFeePayments(false)" class="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2.5 rounded-xl text-xs">💾 শুধু সংরক্ষণ</button>
+                    <button type="button" onclick="App.printFeeDraft()" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2.5 rounded-xl text-xs" title="রশিদে 'খসড়া' সিল পড়বে">🖨 সংরক্ষণ ছাড়া প্রিন্ট</button>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="App.openFeeLedger()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs">📒 সব পেমেন্ট রেকর্ড</button>
+                    <button type="button" onclick="App.openStudentFeeLedger()" class="bg-amber-500 hover:bg-amber-400 text-white font-bold py-2.5 rounded-xl text-xs">👤 এই শিক্ষার্থীর ইতিহাস</button>
+                  </div>
+                </div>
+                <p class="text-[11px] text-slate-500">সংরক্ষিত রশিদ মুছে ফেলা যায় না — ভুল হলে কারণসহ "বাতিল" করা যায়, ফলে হিসাব সবসময় স্বচ্ছ থাকে।</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ডান: লাইভ প্রিভিউ -->
+          <div class="xl:col-span-7 xl:sticky xl:top-24">
+            <div class="modern-card p-4">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <div id="cert-preview-title" class="font-extrabold text-sm text-blue-900 dark:text-blue-200">লাইভ প্রিভিউ</div>
+                <div class="cm-toolbar !mb-0">
+                  <label class="text-[11px] font-bold text-slate-500">জুম</label>
+                  <input type="range" id="cert-zoom" min="0" max="130" step="5" value="0" oninput="App.setCertZoom(this.value)" class="w-24 accent-teal-700" />
+                  <span id="cert-zoom-label" class="text-[11px] font-extrabold w-14">অটো ফিট</span>
+                  <button type="button" onclick="App.resetCertZoom()" class="cm-tb-btn">ফিট</button>
+                  <button type="button" id="cert-print-btn" onclick="App.printCertificateNow()" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold px-4 py-1.5 rounded-lg text-xs shadow">🖨 A4 প্রিন্ট / PDF</button>
+                </div>
+              </div>
+              <p id="cert-orient-note" class="text-[11px] font-bold text-blue-700 dark:text-blue-300 mb-2"></p>
+              <div id="certificate-preview-box"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 11: QR SCAN ATTENDANCE (SEPARATE FROM MONTHLY GRID) ==================== -->
+      <section id="tab-qratt" class="tab-section hidden animate-section space-y-6">
+        <div class="modern-card p-6 space-y-4">
+          <div>
+            <h2 class="text-lg font-extrabold text-blue-900 dark:text-blue-300">📷 QR স্ক্যান হাজিরা — মোবাইল/ল্যাপটপের লাইভ ক্যামেরায়</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">আইডি কার্ড বা মার্কশিটের QR স্ক্যান করলেই হাজিরা সংরক্ষিত হয়। এই হাজিরা মাসিক হাজিরা গ্রিড (মডিউল ৪) থেকে সম্পূর্ণ আলাদা রেকর্ডে থাকে।</p>
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div class="space-y-3">
+              <div class="relative rounded-2xl overflow-hidden bg-slate-900 aspect-[4/3] max-w-xl">
+                <video id="qr-video" class="w-full h-full object-cover" playsinline muted></video>
+                <canvas id="qr-canvas" class="hidden"></canvas>
+                <div id="qr-idle" class="absolute inset-0 flex flex-col items-center justify-center text-slate-300 text-sm gap-2">
+                  <span class="text-5xl">📷</span><span>ক্যামেরা বন্ধ আছে — "স্ক্যান শুরু করুন" চাপুন</span>
+                </div>
+                <div class="pointer-events-none absolute inset-[18%] border-2 border-amber-300/90 rounded-2xl"></div>
+              </div>
+              <div class="flex flex-wrap gap-2 text-xs font-bold">
+                <button id="qr-start-btn" onclick="App.startQrScan()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl shadow">▶ স্ক্যান শুরু করুন</button>
+                <button id="qr-stop-btn" onclick="App.stopQrScan()" class="hidden bg-rose-600 hover:bg-rose-500 text-white px-5 py-2.5 rounded-xl shadow">■ স্ক্যান বন্ধ করুন</button>
+                <button onclick="App.switchQrCamera()" class="bg-slate-200 dark:bg-slate-700 px-4 py-2.5 rounded-xl">🔄 সামনে/পেছনের ক্যামেরা</button>
+              </div>
+              <div class="grid grid-cols-2 gap-3 text-sm max-w-xl">
+                <div><label class="block text-xs font-bold text-slate-500 mb-1">হাজিরার তারিখ</label><input type="date" id="qr-date" onchange="App.renderQrAttendance()" class="w-full modern-input font-bold" /></div>
+                <div><label class="block text-xs font-bold text-slate-500 mb-1">এরপর এলে "দেরি" ধরা হবে</label><input type="time" id="qr-late" value="10:00" onchange="App.renderQrAttendance()" class="w-full modern-input font-bold" /></div>
+                <div><label class="block text-xs font-bold text-slate-500 mb-1">পরীক্ষা</label>
+                  <select id="qr-exam" onchange="App.renderQrAttendance()" class="w-full modern-input font-bold"><option value="Half-Yearly">অর্ধবার্ষিক</option><option value="Annual">বার্ষিক</option><option value="Test">নির্বাচনী/টেস্ট</option></select></div>
+                <div><label class="block text-xs font-bold text-slate-500 mb-1">বিষয়/শিফট (ঐচ্ছিক)</label><input type="text" id="qr-note" placeholder="যেমন: বাংলা ১ম পত্র" class="w-full modern-input" /></div>
+                <div><label class="block text-xs font-bold text-slate-500 mb-1">স্ক্যান মোড</label>
+                  <select id="qr-mode" onchange="App.renderQrAttendance()" class="w-full modern-input font-bold"><option value="inout" selected>আসা + যাওয়া (IN/OUT)</option><option value="in">শুধু আসা (IN)</option></select></div>
+                <div><label class="block text-xs font-bold text-slate-500 mb-1">পরপর স্ক্যানের বিরতি (মিনিট)</label><input type="number" id="qr-gap" value="1" min="0" step="0.5" class="w-full modern-input font-bold" /></div>
+              </div>
+              <div class="flex gap-2 max-w-xl">
+                <input type="text" id="qr-manual" onkeydown="if(event.key==='Enter')App.manualQrEntry()" placeholder="ক্যামেরা না চললে ইউনিক আইডি লিখুন (যেমন 2609001)" class="flex-1 modern-input text-sm font-mono" />
+                <button onclick="App.manualQrEntry()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-4 rounded-xl">+ হাজিরা দিন</button>
+              </div>
+            </div>
+            <div class="space-y-3">
+              <div id="qr-result"><div class="rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-600 p-8 text-center text-slate-400 text-sm">স্ক্যানের ফলাফল এখানে দেখাবে — শিক্ষার্থীর ছবি, নাম, শ্রেণী ও সময়সহ।</div></div>
+              <div id="qr-kpi" class="grid grid-cols-2 md:grid-cols-3 gap-2"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modern-card p-6 space-y-3">
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <div class="flex flex-wrap items-end gap-3 text-sm">
+              <div><label class="block text-xs font-bold text-slate-500 mb-1">শ্রেণী</label>
+                <select id="qr-f-class" onchange="App.renderQrAttendance()" class="modern-input font-bold">
+                  <option value="ALL">সকল শ্রেণী</option><option value="6">৬ষ্ঠ</option><option value="7">৭ম</option><option value="8">৮ম</option><option value="9">৯ম</option><option value="10">১০ম</option>
+                </select></div>
+              <div><label class="block text-xs font-bold text-slate-500 mb-1">তালিকা</label>
+                <select id="qr-f-view" onchange="App.renderQrAttendance()" class="modern-input font-bold">
+                  <option value="present">✔ উপস্থিত তালিকা (আসা-যাওয়া সহ)</option><option value="out">↗ বর্তমানে বাইরে আছে</option><option value="absent">✖ অনুপস্থিত তালিকা</option>
+                </select></div>
+            </div>
+            <div class="flex gap-2 text-xs font-bold">
+              <button onclick="App.exportQrAttendanceExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl">📤 Excel</button>
+              <button onclick="App.printQrAttendance()" class="bg-blue-700 hover:bg-blue-600 text-white px-3.5 py-2 rounded-xl">🖨 রিপোর্ট প্রিন্ট</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto rounded-xl border border-blue-200 dark:border-slate-700 max-h-[60vh]">
+            <table id="qr-table" class="w-full text-xs border-collapse formal-table">
+              <thead id="qr-thead"></thead>
+              <tbody id="qr-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modern-card p-6 space-y-3">
+          <div>
+            <h3 class="font-extrabold text-blue-900 dark:text-blue-200">👥 ক্লাস লিস্ট থেকে টিক (✔) দিয়ে একসাথে অনেকের হাজিরা</h3>
+            <p class="text-xs text-slate-500">শ্রেণী ও বিভাগ বেছে তালিকা থেকে শিক্ষার্থী টিক দিন, তারপর "উপস্থিত (IN)" বা "বের হয়েছে (OUT)" চাপুন। তারিখ, পরীক্ষা ও দেরির সময় ওপরের ঘর থেকে আসবে। এটি শুধু পরীক্ষার হাজিরার জন্য।</p>
+          </div>
+          <div class="flex flex-wrap items-end gap-3 text-sm">
+            <div><label class="block text-xs font-bold text-slate-500 mb-1">শ্রেণী</label>
+              <select id="qb-class" onchange="App.syncSmartGroupFilter('qb-class','qb-group',true);App.qbClear()" class="modern-input font-bold"><option value="6">৬ষ্ঠ</option><option value="7">৭ম</option><option value="8">৮ম</option><option value="9">৯ম</option><option value="10">১০ম</option></select></div>
+            <div><label class="block text-xs font-bold text-slate-500 mb-1">বিভাগ</label><select id="qb-group" onchange="App.renderQrBulkList()" class="modern-input font-bold"></select></div>
+            <div><label class="block text-xs font-bold text-slate-500 mb-1">খুঁজুন (নাম/রোল/আইডি)</label><input type="text" id="qb-search" oninput="App.renderQrBulkList()" class="modern-input w-44" /></div>
+            <div><label class="block text-xs font-bold text-slate-500 mb-1">সময় (ফাঁকা = এখন)</label><input type="time" id="qb-time" class="modern-input" /></div>
+            <span id="qb-count" class="text-xs font-extrabold text-blue-700 pb-2">০ জন নির্বাচিত</span>
+          </div>
+          <div class="flex flex-wrap gap-2 text-xs font-bold">
+            <button onclick="App.qbToggleAll(true)" class="bg-slate-200 dark:bg-slate-700 px-3 py-2 rounded-xl">☑ সবাইকে নির্বাচন</button>
+            <button onclick="App.qbSelectAbsent()" class="bg-rose-100 text-rose-800 px-3 py-2 rounded-xl">✖ অনুপস্থিতদের নির্বাচন</button>
+            <button onclick="App.qbClear()" class="bg-slate-200 dark:bg-slate-700 px-3 py-2 rounded-xl">নির্বাচন মুছুন</button>
+            <button onclick="App.qbMark('IN')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl shadow">✔ নির্বাচিতদের উপস্থিত (IN) দিন</button>
+            <button onclick="App.qbMark('OUT')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl shadow">↗ নির্বাচিতদের বের হওয়া (OUT)</button>
+          </div>
+          <div class="overflow-x-auto rounded-xl border border-blue-200 dark:border-slate-700 max-h-[55vh]">
+            <table class="w-full text-xs border-collapse formal-table">
+              <thead><tr><th><input type="checkbox" id="qb-all" onchange="App.qbToggleAll(this.checked)" class="w-4 h-4" /></th><th>রোল</th><th>আইডি</th><th>নাম</th><th>বিভাগ</th><th>বর্তমান অবস্থা</th></tr></thead>
+              <tbody id="qb-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ==================== QUICK MARK EDIT MODAL (FROM MERIT LIST / TABULATION) ==================== -->
+  <div id="quick-mark-modal" class="no-print fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="modern-card w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border-2 border-blue-500">
+      <div class="royal-topbar text-white px-5 py-3.5 flex items-center justify-between">
+        <div>
+          <h3 id="qmm-title" class="font-extrabold text-base text-amber-300">শিক্ষার্থীর নম্বর দ্রুত এডিট করুন</h3>
+          <p id="qmm-subtitle" class="text-xs text-blue-100"></p>
+        </div>
+        <button onclick="App.closeQuickMarkModal()" class="w-8 h-8 rounded-lg bg-white/15 hover:bg-rose-500 text-white font-bold flex items-center justify-center">✕</button>
+      </div>
+      <div id="qmm-body" class="p-5 overflow-y-auto flex-1"></div>
+      <div class="px-5 py-3 bg-slate-100 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <span class="text-xs text-slate-500">💡 টিপস: নম্বর পরিবর্তন করে সেভ করলেই মেধাক্রম ও মার্কশিট সাথে সাথে আপডেট হয়ে যাবে।</span>
+        <div class="flex gap-2">
+          <button onclick="App.closeQuickMarkModal()" class="px-4 py-2 rounded-xl bg-slate-300 dark:bg-slate-700 text-xs font-bold">বাতিল</button>
+          <button onclick="App.saveQuickModalMarks()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-extrabold shadow-lg">💾 পরিবর্তন সংরক্ষণ ও ফলাফল আপডেট করুন</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <!-- MARKSHEET PREVIEW MODAL -->
+  <div id="marksheet-preview-modal" class="no-print fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm hidden items-start justify-center p-3 overflow-y-auto">
+    <div class="w-full" style="max-width:214mm">
+      <div class="flex items-center justify-between gap-2 mb-2 text-white">
+        <span class="font-bold text-sm">মার্কশিট প্রিভিউ — প্রিন্টে হুবহু এমনই আসবে</span>
+        <div class="flex gap-2">
+          <button onclick="App.printSingleMarksheet(App._previewUid)" class="bg-amber-400 text-slate-950 font-extrabold text-xs px-4 py-2 rounded-lg">🖨 প্রিন্ট</button>
+          <button onclick="App.closeMarksheetPreview()" class="bg-white/20 hover:bg-rose-500 font-bold text-xs px-3 py-2 rounded-lg">✕ বন্ধ</button>
+        </div>
+      </div>
+      <div id="ms-preview-body" class="bg-white rounded-md p-2 overflow-x-auto"></div>
+    </div>
+  </div>
+
+  <!-- DEDICATED PRINT STAGE -->
+  <div id="fee-ledger-modal" class="hidden fixed inset-0 z-[90] bg-slate-900/70 items-start justify-center p-3 overflow-y-auto no-print">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-7xl my-4 p-5 space-y-3">
+      <div class="flex items-center justify-between gap-3">
+        <h3 class="text-lg font-extrabold text-blue-900 dark:text-blue-200">📒 বেতন / ফি পেমেন্ট রেকর্ড — কে কত টাকা কোন মাসে দিয়েছে</h3>
+        <button onclick="App.closeFeeLedger()" class="bg-rose-100 hover:bg-rose-500 hover:text-white text-rose-700 font-extrabold px-3 py-1.5 rounded-xl text-sm">✕ বন্ধ</button>
+      </div>
+      <div class="flex flex-wrap items-end gap-3 text-sm">
+        <div><label class="block text-xs font-bold text-slate-500 mb-1">দেখার ধরন</label><select id="fl-view" onchange="App.renderFeeLedger()" class="modern-input font-bold"><option value="list">রশিদ অনুযায়ী তালিকা</option><option value="matrix">শিক্ষার্থী × মাস ছক</option></select></div>
+        <div><label class="block text-xs font-bold text-slate-500 mb-1">শ্রেণী</label><select id="fl-class" onchange="App.renderFeeLedger()" class="modern-input font-bold"><option value="ALL">সকল</option><option value="6">৬ষ্ঠ</option><option value="7">৭ম</option><option value="8">৮ম</option><option value="9">৯ম</option><option value="10">১০ম</option></select></div>
+        <div><label class="block text-xs font-bold text-slate-500 mb-1">মাস (তালিকার জন্য)</label><select id="fl-month" onchange="App.renderFeeLedger()" class="modern-input font-bold"><option value="ALL">সকল মাস</option><option value="1">জানুয়ারি</option><option value="2">ফেব্রুয়ারি</option><option value="3">মার্চ</option><option value="4">এপ্রিল</option><option value="5">মে</option><option value="6">জুন</option><option value="7">জুলাই</option><option value="8">আগস্ট</option><option value="9">সেপ্টেম্বর</option><option value="10">অক্টোবর</option><option value="11">নভেম্বর</option><option value="12">ডিসেম্বর</option></select></div>
+        <div><label class="block text-xs font-bold text-slate-500 mb-1">অবস্থা</label><select id="fl-status" onchange="App.renderFeeLedger()" class="modern-input font-bold"><option value="ALL">সব</option><option value="PAID">পূর্ণ পরিশোধিত</option><option value="DUE">বকেয়া আছে</option><option value="VOID">বাতিল</option></select></div>
+        <div><label class="block text-xs font-bold text-slate-500 mb-1">তারিখ থেকে</label><input type="date" id="fl-from" onchange="App.renderFeeLedger()" class="modern-input font-bold" /></div>
+        <div><label class="block text-xs font-bold text-slate-500 mb-1">তারিখ পর্যন্ত</label><input type="date" id="fl-to" onchange="App.renderFeeLedger()" class="modern-input font-bold" /></div>
+        <button onclick="App.ledgerToday()" class="bg-slate-200 dark:bg-slate-700 text-xs font-bold px-3 py-2.5 rounded-xl">আজকের আদায়</button>
+        <button onclick="App.ledgerClearDates()" class="bg-slate-200 dark:bg-slate-700 text-xs font-bold px-3 py-2.5 rounded-xl">তারিখ মুছুন</button>
+        <div><label class="block text-xs font-bold text-slate-500 mb-1">খুঁজুন (নাম/আইডি/রশিদ নং)</label><input type="text" id="fl-search" oninput="App.renderFeeLedger()" class="modern-input w-52" /></div>
+        <button onclick="App.exportFeeLedgerExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl">📤 Excel</button>
+        <button onclick="App.printFeeLedger()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl">🖨 প্রিন্ট</button>
+      </div>
+      <div id="fl-summary" class="grid grid-cols-2 md:grid-cols-5 gap-2"></div>
+      <div id="fl-body" class="overflow-auto rounded-xl border border-blue-200 dark:border-slate-700 max-h-[60vh]"></div>
+    </div>
+  </div>
+
+  <div id="print-stage" class="hidden print-only"></div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast-box" class="no-print fixed bottom-5 right-5 z-50 space-y-2"></div>
+
+  <!-- EXTERNAL JAVASCRIPT ENGINE -->
+  <script src="app.js"></script>
+  <!-- নিরাপদ Google লগইন + Drive অটো-ব্যাকআপ (secure-login.js) -->
+  <script src="secure-login.js"></script>
+</body>
+</html>
