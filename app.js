@@ -5256,9 +5256,9 @@ Object.assign(App, {
   showQrResult(kind, stu, msg, rec) {
     const box = document.getElementById('qr-result'); if (!box) return;
     const st = {
-      ok: ['bg-emerald-600', '✔ উপস্থিত (IN)'], late: ['bg-amber-500', '⏰ দেরিতে উপস্থিত (IN)'],
-      out: ['bg-indigo-600', '↗ বের হয়েছে (OUT)'], back: ['bg-teal-600', '↩ আবার প্রবেশ (IN)'],
-      warn: ['bg-sky-600', 'ℹ আগেই স্ক্যান হয়েছে'], error: ['bg-rose-600', '✖ ব্যর্থ']
+      ok: ['green', '✔ উপস্থিত (IN)'], late: ['yellow', '⏰ দেরিতে উপস্থিত (IN)'],
+      out: ['cyan', '↗ বের হয়েছে (OUT)'], back: ['orange', '↩ আবার প্রবেশ (IN)'],
+      warn: ['red', 'ℹ আগেই স্ক্যান হয়েছে'], error: ['red', '✖ ব্যর্থ']
     }[kind] || ['bg-slate-600', ''];
     const times = rec ? `<div class="text-xs font-mono mt-1 opacity-95">IN: ${rec.inTime || rec.time} &nbsp;|&nbsp; OUT: ${rec.outTime || '—'}</div>` : '';
     box.innerHTML = `
