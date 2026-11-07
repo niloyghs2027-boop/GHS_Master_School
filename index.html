@@ -652,15 +652,69 @@
       #toast-box{left:12px!important;right:12px!important;bottom:calc(12px + env(safe-area-inset-bottom,0px))!important}
       .sd-box{max-width:calc(100vw - 24px)}
     }
+
+    /* ===== মোবাইল ফ্রেন্ডলি রিফাইনমেন্ট (v5.2) — শুধু ছোট স্ক্রিনে প্রযোজ্য, ডেস্কটপ অপরিবর্তিত ===== */
+    #mobile-bottom-nav{display:none}
+    .hdr-more-btn{display:none}
+    @media (max-width:1023px){
+      /* ১) উপরের হেডার: স্ক্রলের সাথে সরে যাবে, আর আটকে থাকবে না */
+      header.royal-topbar{position:static!important}
+      /* ২) বাম পাশের মেনু = স্লাইড-ইন ড্রয়ার */
+      .royal-sidebar{padding-top:calc(12px + env(safe-area-inset-top,0px))!important;padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))!important;justify-content:flex-start!important;gap:12px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+      body.sidebar-collapsed .royal-sidebar{box-shadow:none!important;visibility:hidden;transition:margin-left .32s cubic-bezier(.16,1,.3,1),visibility 0s linear .32s}
+      body:not(.sidebar-collapsed) .royal-sidebar{visibility:visible;box-shadow:12px 0 40px -8px rgba(2,6,23,.55)}
+      #main-tabs>div:first-child{position:sticky;top:-12px;z-index:2;background:#1e3a8a;margin:-4px -4px 6px;padding:12px 12px;border-radius:12px;font-size:12px}
+      #main-tabs>div:first-child button{width:34px;height:34px;font-size:15px}
+      .side-nav-btn{padding:13px 14px;font-size:14.5px;line-height:1.35;border-radius:12px}
+      .side-nav-btn .text-lg{font-size:21px;flex-shrink:0}
+      /* ৩) নিচের দ্রুত-নেভিগেশন বার */
+      body{padding-bottom:calc(68px + env(safe-area-inset-bottom,0px))}
+      #mobile-bottom-nav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:42;gap:2px;background:linear-gradient(180deg,#1e3a8a,#312e81);border-top:1px solid rgba(255,255,255,.18);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 22px -10px rgba(2,6,23,.5)}
+      #mobile-bottom-nav button{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#cfe3e8;font-size:11px;font-weight:700;padding:5px 2px;border-radius:12px;background:transparent;border:0}
+      #mobile-bottom-nav button .ic{font-size:20px;line-height:1}
+      #mobile-bottom-nav button.active{background:rgba(224,176,74,.22);color:#fff;box-shadow:inset 0 -2px 0 #e0b04a}
+      /* সিঙ্ক স্ট্যাটাস পিল ও টোস্ট নিচের বারের ওপরে */
+      #serp-widget{bottom:calc(76px + env(safe-area-inset-bottom,0px))!important}
+      #toast-box{bottom:calc(76px + env(safe-area-inset-bottom,0px))!important}
+    }
+    @media (max-width:767px){
+      /* ৪) কমপ্যাক্ট হেডার: ☰ লোগো নাম [⚙] — বাকিটা ⚙ চাপলে খোলে */
+      .hdr-row{padding:8px 12px!important;gap:8px!important;flex-wrap:wrap}
+      .hdr-left{flex:1 1 0;min-width:0}
+      #nav-school-logo{width:36px;height:36px}
+      #nav-school-name{font-size:14.5px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+      .hdr-more-btn{display:inline-flex!important;flex-shrink:0}
+      header.royal-topbar .hdr-collapsible{display:none}
+      header.royal-topbar.hdr-open .hdr-collapsible{display:flex}
+      header.royal-topbar.hdr-open .hdr-actions{flex-basis:100%;gap:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.18)}
+      header.royal-topbar.hdr-open .hdr-actions>*{flex:1 1 auto;justify-content:center}
+      header.royal-topbar.hdr-open .hdr-caret{transform:rotate(180deg)}
+      header.royal-topbar.hdr-open .hdr-left{flex-wrap:wrap}
+      header.royal-topbar.hdr-open .hdr-collapsible:not(.hdr-actions){margin-top:6px}
+      #theme-text{display:inline!important}
+      /* ৫) কনটেন্ট: কার্ডের প্যাডিং কমানো, ফর্ম/টুলবার স্ক্রিনের ভেতরে রাখা */
+      main{padding:10px!important}
+      main .modern-card.p-6,main .modern-card.p-5{padding:14px!important}
+      main .w-56,main .w-52,main .w-44{width:100%;max-width:100%}
+      main .modern-input,main select{max-width:100%}
+      main h2{font-size:1.05rem;line-height:1.35}
+      main .overflow-x-auto{-webkit-overflow-scrolling:touch}
+      /* QR হাজিরা: বড় ক্যামেরা বোতাম */
+      #tab-qratt #qr-start-btn,#tab-qratt #qr-stop-btn{flex:1 1 100%;padding-top:14px;padding-bottom:14px;font-size:14px}
+      #tab-qratt .aspect-\[4\/3\]{max-width:100%}
+    }
+    @media (min-width:768px) and (max-width:1023px){
+      .hdr-row{padding:8px 16px!important}
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
   <noscript><div style="padding:24px;font:700 16px sans-serif;color:#be123c">এই অ্যাপ চালাতে ব্রাউজারে JavaScript চালু থাকতে হবে।</div></noscript>
 
   <!-- ==================== TOP ROYAL GRADIENT HEADER ==================== -->
-  <header class="no-print royal-topbar text-white shadow-xl sticky top-0 z-40">
-    <div class="px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
+  <header id="app-header" class="no-print royal-topbar text-white shadow-xl sticky top-0 z-40">
+    <div class="hdr-row px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      <div class="hdr-left flex items-center gap-3 min-w-0">
         <button onclick="App.toggleSidebar()" title="মেনু সাইডবার লুকান / দেখান"
                 class="w-10 h-10 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 flex items-center justify-center text-xl font-bold transition active:scale-95 shadow">
           ☰
@@ -668,7 +722,7 @@
 
         <img id="nav-school-logo" src="" alt="Logo" class="w-11 h-11 rounded-xl bg-white object-contain p-1 shadow-md hidden" />
 
-        <div>
+        <div class="min-w-0">
           <div class="flex items-center gap-2">
             <h1 id="nav-school-name" class="text-base md:text-xl font-extrabold tracking-tight text-white drop-shadow-sm">
               প্রতিষ্ঠানের নাম সেট করুন
@@ -678,7 +732,7 @@
             </span>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2 text-xs text-blue-100 mt-0.5">
+          <div class="hdr-collapsible flex flex-wrap items-center gap-2 text-xs text-blue-100 mt-0.5">
             <span class="bg-white/15 border border-white/20 px-2 py-0.5 rounded font-mono">
               EIIN: <strong id="nav-eiin" class="text-amber-300">—</strong>
             </span>
@@ -692,7 +746,13 @@
         </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
+      <!-- মোবাইলে হেডার ছোট রাখতে: শিক্ষাবর্ষ/থিম/ব্যাকআপ বোতামগুলো এই বোতামে খোলে-বন্ধ হয় -->
+      <button id="hdr-more-btn" type="button" onclick="toggleHdrMore()" aria-expanded="false" title="শিক্ষাবর্ষ, থিম ও ব্যাকআপ অপশন"
+              class="hdr-more-btn hidden items-center gap-1.5 bg-white/15 hover:bg-white/25 border border-white/25 text-amber-200 text-xs font-extrabold px-3 h-10 rounded-xl active:scale-95 transition">
+        <span aria-hidden="true">⚙</span><span id="hdr-session-mini"></span><span class="hdr-caret" aria-hidden="true">▾</span>
+      </button>
+
+      <div class="hdr-collapsible hdr-actions flex flex-wrap items-center gap-2">
         <button onclick="App.toggleTheme()" id="theme-toggle-btn" class="bg-white/15 hover:bg-white/25 border border-white/25 text-amber-200 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition">
           <span id="theme-icon">🌙</span>
           <span id="theme-text" class="hidden sm:inline">ডার্ক মোড</span>
@@ -1824,6 +1884,7 @@
                 <button id="qr-stop-btn" onclick="App.stopQrScan()" class="hidden bg-rose-600 hover:bg-rose-500 text-white px-5 py-2.5 rounded-xl shadow">■ স্ক্যান বন্ধ করুন</button>
                 <button onclick="App.switchQrCamera()" class="bg-slate-200 dark:bg-slate-700 px-4 py-2.5 rounded-xl">🔄 সামনে/পেছনের ক্যামেরা</button>
               </div>
+              <div id="qr-date-warn" class="hidden max-w-xl rounded-xl bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold p-3 flex-wrap items-center gap-2"></div>
               <div class="grid grid-cols-2 gap-3 text-sm max-w-xl">
                 <div><label class="block text-xs font-bold text-slate-500 mb-1">হাজিরার তারিখ</label><input type="date" id="qr-date" onchange="App.renderQrAttendance()" class="w-full modern-input font-bold" /></div>
                 <div><label class="block text-xs font-bold text-slate-500 mb-1">এরপর এলে "দেরি" ধরা হবে</label><input type="time" id="qr-late" value="10:00" onchange="App.renderQrAttendance()" class="w-full modern-input font-bold" /></div>
@@ -1894,6 +1955,29 @@
             <table class="w-full text-xs border-collapse formal-table">
               <thead><tr><th><input type="checkbox" id="qb-all" onchange="App.qbToggleAll(this.checked)" class="w-4 h-4" /></th><th>রোল</th><th>আইডি</th><th>নাম</th><th>বিভাগ</th><th>বর্তমান অবস্থা</th></tr></thead>
               <tbody id="qb-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ==== সংরক্ষিত হাজিরা রেকর্ড (তারিখ অনুযায়ী যেকোনো সময় পড়ার জন্য) ==== -->
+        <div id="qr-history-card" class="modern-card p-6 space-y-3">
+          <div>
+            <h3 class="font-extrabold text-blue-900 dark:text-blue-200">🗂 সংরক্ষিত হাজিরা রেকর্ড — তারিখ অনুযায়ী যেকোনো দিনের হাজিরা দেখুন</h3>
+            <p class="text-xs text-slate-500">প্রতিদিনের প্রতিটি স্ক্যান/টিক হাজিরা নিজে থেকেই সেভ থাকে (ব্যাকআপ ও Drive সিঙ্কেও যায়)। যেকোনো তারিখের "দেখুন" চাপলে ওই দিনের পূর্ণ হাজিরা ওপরের তালিকায় খুলবে।</p>
+          </div>
+          <div class="flex flex-wrap items-end gap-3 text-sm">
+            <div><label class="block text-xs font-bold text-slate-500 mb-1">শুরুর তারিখ</label><input type="date" id="qh-from" onchange="App.renderQrHistory()" class="modern-input font-bold" /></div>
+            <div><label class="block text-xs font-bold text-slate-500 mb-1">শেষ তারিখ</label><input type="date" id="qh-to" onchange="App.renderQrHistory()" class="modern-input font-bold" /></div>
+            <div><label class="block text-xs font-bold text-slate-500 mb-1">পরীক্ষা</label>
+              <select id="qh-exam" onchange="App.renderQrHistory()" class="modern-input font-bold"><option value="ALL">সকল পরীক্ষা</option><option value="Half-Yearly">অর্ধবার্ষিক</option><option value="Annual">বার্ষিক</option><option value="Test">নির্বাচনী/টেস্ট</option></select></div>
+            <button onclick="App.qrHistoryClear()" class="bg-slate-200 dark:bg-slate-700 text-xs font-bold px-3 py-2 rounded-xl">সব তারিখ দেখান</button>
+            <button onclick="App.exportQrHistoryExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl">📤 Excel (সব তারিখ)</button>
+            <span id="qh-count" class="text-xs font-extrabold text-blue-700 pb-2"></span>
+          </div>
+          <div class="overflow-x-auto rounded-xl border border-blue-200 dark:border-slate-700 max-h-[60vh]">
+            <table class="w-full text-xs border-collapse formal-table">
+              <thead><tr><th>#</th><th>তারিখ</th><th>বার</th><th>পরীক্ষা</th><th>বিষয়/শিফট</th><th>উপস্থিত</th><th>দেরি</th><th>বাইরে</th><th>অনুপস্থিত</th><th>অ্যাকশন</th></tr></thead>
+              <tbody id="qh-body"></tbody>
             </table>
           </div>
         </div>
@@ -1968,8 +2052,58 @@
   <div id="toast-box" class="no-print fixed bottom-5 right-5 z-50 space-y-2"></div>
 
   <!-- EXTERNAL JAVASCRIPT ENGINE -->
-  <script src="app.js?v=5.1"></script>
+  <!-- ==================== মোবাইল নিচের দ্রুত-নেভিগেশন বার (শুধু ছোট স্ক্রিনে) ==================== -->
+  <nav id="mobile-bottom-nav" class="no-print" aria-label="দ্রুত নেভিগেশন">
+    <button type="button" onclick="App.toggleSidebar()" aria-label="সব মেনু খুলুন"><span class="ic">☰</span><span>মেনু</span></button>
+    <button type="button" data-mtab="dashboard" onclick="App.switchTab('dashboard')"><span class="ic">🏠</span><span>হোম</span></button>
+    <button type="button" data-mtab="students" onclick="App.switchTab('students')"><span class="ic">👨‍🎓</span><span>শিক্ষার্থী</span></button>
+    <button type="button" data-mtab="attendance" onclick="App.switchTab('attendance')"><span class="ic">📅</span><span>হাজিরা</span></button>
+    <button type="button" data-mtab="results" onclick="App.switchTab('results')"><span class="ic">🏆</span><span>ফলাফল</span></button>
+    <button type="button" data-mtab="qratt" onclick="App.switchTab('qratt')"><span class="ic">📷</span><span>QR</span></button>
+  </nav>
+
+  <script src="app.js?v=5.2"></script>
   <!-- নিরাপদ Google লগইন + Drive অটো-ব্যাকআপ (secure-login.js) -->
   <script src="secure-login.js?v=5.1"></script>
+
+  <script>
+  /* মোবাইল ইউআই সহায়ক (শুধু ছোট স্ক্রিনের আচরণ) */
+  (function () {
+    var hdr = document.getElementById('app-header');
+    if (window.innerWidth < 1024) document.body.classList.add('sidebar-collapsed');
+    window.toggleHdrMore = function () {
+      if (!hdr) return;
+      var open = hdr.classList.toggle('hdr-open');
+      var b = document.getElementById('hdr-more-btn'); if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+    function syncSession() {
+      var s = document.getElementById('global-session'), m = document.getElementById('hdr-session-mini');
+      if (s && m) m.textContent = s.value || '';
+    }
+    function syncNav() {
+      var t = (typeof App !== 'undefined' && App.activeTab) || 'dashboard';
+      document.querySelectorAll('#mobile-bottom-nav [data-mtab]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-mtab') === t); });
+    }
+    if (typeof App !== 'undefined') {
+      if (typeof App.switchTab === 'function') {
+        var o = App.switchTab;
+        App.switchTab = function (t) {
+          var r = o.apply(this, arguments);
+          syncNav(); syncSession();
+          if (window.innerWidth < 1024) window.scrollTo(0, 0);
+          return r;
+        };
+      }
+      if (typeof App.renderSessionSelectors === 'function') {
+        var o2 = App.renderSessionSelectors;
+        App.renderSessionSelectors = function () { var r = o2.apply(this, arguments); syncSession(); return r; };
+      }
+    }
+    document.addEventListener('change', function (e) { if (e.target && e.target.id === 'global-session') syncSession(); });
+    window.addEventListener('load', function () { syncSession(); syncNav(); });
+    syncSession(); syncNav();
+  })();
+  </script>
+
 </body>
 </html>

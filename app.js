@@ -5293,6 +5293,9 @@ Object.assign(App, {
   renderQrAttendance() {
     const dEl = document.getElementById('qr-date'); if (!dEl) return;
     if (!dEl.value) dEl.value = this.todayStr();
+    // হাজিরার ডেটা ব্রাউজার যেন নিজে থেকে মুছে না ফেলে — স্থায়ী স্টোরেজের অনুরোধ (একবার)
+    if (!this._persistAsked) { this._persistAsked = true; try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {} }
+    this._qrDateWarn();
     const view = document.getElementById('qr-f-view').value;
     const { roster, present, absent, out } = this._qrDayData();
     const late = present.filter(p => p.r.status === 'Late').length;
@@ -5323,6 +5326,7 @@ Object.assign(App, {
     }
     document.getElementById('qr-table-body').innerHTML = rows || `<tr><td colspan="10" class="text-center text-slate-400 py-8">কোনো তথ্য নেই</td></tr>`;
     this.renderQrBulkList();
+    this.renderQrHistory();
   },
 
   /* ---------- ক্লাস লিস্ট থেকে টিক-মার্ক করে একসাথে অনেকের হাজিরা ---------- */
@@ -5460,9 +5464,116 @@ Object.assign(App, {
   }
 });
 
+/* ==================== MODULE 11 (সংযোজন): সংরক্ষিত দৈনিক হাজিরা — তারিখ অনুযায়ী যেকোনো সময় দেখা ==================== */
+Object.assign(App, {
+  /** পুরোনো তারিখ দেখার সময় নতুন স্ক্যানও ওই তারিখেই সেভ হয় — তাই সতর্কবার্তা */
+  _qrDateWarn() {
+    const box = document.getElementById('qr-date-warn'); if (!box) return;
+    const d = document.getElementById('qr-date')?.value || this.todayStr();
+    if (d === this.todayStr()) { box.classList.add('hidden'); box.classList.remove('flex'); box.innerHTML = ''; return; }
+    box.classList.remove('hidden'); box.classList.add('flex');
+    box.innerHTML = `<span>⚠ আপনি এখন <b>${this.esc(d)}</b> তারিখের হাজিরা দেখছেন। এখন স্ক্যান/টিক দিলে সেটিও এই তারিখেই সেভ হবে।</span>
+      <button onclick="App.qrGoToday()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg">আজকের তারিখে ফিরুন</button>`;
+  },
+
+  qrGoToday() {
+    const el = document.getElementById('qr-date'); if (el) el.value = this.todayStr();
+    this.renderQrAttendance();
+  },
+
+  _qhFilter() {
+    return {
+      from: document.getElementById('qh-from')?.value || '',
+      to: document.getElementById('qh-to')?.value || '',
+      exam: document.getElementById('qh-exam')?.value || 'ALL'
+    };
+  },
+
+  _qhRecords() {
+    const f = this._qhFilter();
+    return this.qrAtt.filter(r => {
+      if (r.session !== this.session) return false;
+      const exam = r.exam || 'Half-Yearly';
+      if (f.exam !== 'ALL' && exam !== f.exam) return false;
+      if (f.from && r.date < f.from) return false;
+      if (f.to && r.date > f.to) return false;
+      return true;
+    });
+  },
+
+  _qhGroups() {
+    const map = new Map();
+    this._qhRecords().forEach(r => {
+      this._normalizeQrRec(r);
+      const exam = r.exam || 'Half-Yearly';
+      const k = r.date + '|' + exam;
+      if (!map.has(k)) map.set(k, { date: r.date, exam, note: '', total: 0, late: 0, out: 0 });
+      const g = map.get(k);
+      g.total++; if (r.status === 'Late') g.late++; if (!r.inside) g.out++;
+      if (!g.note && r.note) g.note = r.note;
+    });
+    return [...map.values()].sort((a, b) => b.date.localeCompare(a.date) || a.exam.localeCompare(b.exam));
+  },
+
+  renderQrHistory() {
+    const body = document.getElementById('qh-body'); if (!body) return;
+    const groups = this._qhGroups();
+    const roster = this.students.filter(s => s.session === this.session).length;
+    const cur = { d: document.getElementById('qr-date')?.value, e: document.getElementById('qr-exam')?.value };
+    body.innerHTML = groups.map((g, i) => {
+      const wd = SHORT_DAY_NAMES_BN[new Date(g.date + 'T00:00:00').getDay()] || '';
+      const isCur = cur.d === g.date && cur.e === g.exam;
+      return `<tr class="${isCur ? 'bg-amber-50 dark:bg-slate-800' : ''}">
+        <td class="text-center">${i + 1}</td>
+        <td class="text-center font-mono font-bold">${this.esc(g.date)}</td>
+        <td class="text-center">${wd}</td>
+        <td>${this.esc(EXAM_LABELS_BN[g.exam] || g.exam)}</td>
+        <td>${this.esc(g.note || '—')}</td>
+        <td class="text-center font-bold text-emerald-700">${g.total}</td>
+        <td class="text-center font-bold text-amber-600">${g.late}</td>
+        <td class="text-center font-bold text-indigo-600">${g.out}</td>
+        <td class="text-center font-bold text-rose-600">${Math.max(0, roster - g.total)}</td>
+        <td class="text-center whitespace-nowrap"><button onclick="App.viewQrDay('${g.date}','${g.exam}')" class="text-blue-700 font-bold text-xs hover:underline">👁 দেখুন</button>
+          <button onclick="App.viewQrDay('${g.date}','${g.exam}',true)" class="text-emerald-700 font-bold text-xs hover:underline ml-2">📤 Excel</button></td></tr>`;
+    }).join('') || `<tr><td colspan="10" class="text-center text-slate-400 py-8">এই ফিল্টারে কোনো সংরক্ষিত হাজিরা নেই</td></tr>`;
+    const el = document.getElementById('qh-count');
+    if (el) el.textContent = `${groups.length} টি দিনের রেকর্ড • মোট ${this._qhRecords().length} টি হাজিরা এন্ট্রি`;
+  },
+
+  viewQrDay(date, exam, doExport = false) {
+    const d = document.getElementById('qr-date'), e = document.getElementById('qr-exam');
+    if (d) d.value = date;
+    if (e) e.value = exam;
+    this.renderQrAttendance();
+    if (doExport) return this.exportQrAttendanceExcel();
+    const t = document.getElementById('qr-table');
+    if (t) t.closest('.modern-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    this.toast(`${date} তারিখের হাজিরা খোলা হয়েছে`);
+  },
+
+  qrHistoryClear() {
+    ['qh-from', 'qh-to'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const ex = document.getElementById('qh-exam'); if (ex) ex.value = 'ALL';
+    this.renderQrHistory();
+  },
+
+  exportQrHistoryExcel() {
+    const recs = this._qhRecords().map(r => this._normalizeQrRec(r))
+      .sort((a, b) => b.date.localeCompare(a.date) || Number(a.cls) - Number(b.cls) || String(a.group).localeCompare(String(b.group)) || a.roll - b.roll);
+    if (!recs.length) return this.toast('এই ফিল্টারে এক্সপোর্ট করার মতো হাজিরা নেই', 'warn');
+    const rows = recs.map(r => ({
+      Date: r.date, Exam: r.exam || 'Half-Yearly', Note: r.note || '', Class: r.cls, Group: r.group, Roll: r.roll, UID: r.uid, Name: r.nameBn,
+      In: r.inTime, Out: r.outTime || '', Scans: r.logs.length, Status: r.status === 'Late' ? 'Late' : 'Present', Inside: r.inside ? 'Yes' : 'No', Via: r.via || ''
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'QR_Attendance_History');
+    XLSX.writeFile(wb, `QR_Attendance_History_${this.session}.xlsx`);
+  }
+});
+
 /* ---- Excel (SheetJS) লাইব্রেরি লোড না থাকলে ক্র্যাশ না করে লোড করার চেষ্টা / বার্তা ---- */
 ['downloadStudentTemplate', 'importStudentsExcel', 'exportStudentsExcel', 'exportAttendanceExcel', 'importAttendanceExcel',
- 'exportMarksExcel', 'importMarksExcel', 'exportAgeListExcel', 'exportFeeLedgerExcel', 'exportQrAttendanceExcel'].forEach(name => {
+ 'exportMarksExcel', 'importMarksExcel', 'exportAgeListExcel', 'exportFeeLedgerExcel', 'exportQrAttendanceExcel', 'exportQrHistoryExcel'].forEach(name => {
   const orig = App[name];
   if (typeof orig !== 'function') return;
   App[name] = async function (...args) {
