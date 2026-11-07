@@ -1,6 +1,7 @@
 /**
  * ============================================================================
- * SECURE GOOGLE LOGIN + REAL-TIME MULTI-DEVICE SYNC + ANTI-COPY  (secure-login.js v2)
+ * SECURE GOOGLE LOGIN + REAL-TIME MULTI-DEVICE SYNC + PRODUCT KEY  (secure-login.js v3)
+ * Software design & development: Niloy (নিলয়)
  * ----------------------------------------------------------------------------
  * index.html-এ app.js এর ঠিক পরে:   <script src="secure-login.js"></script>
  *
@@ -26,8 +27,14 @@
     // শুধু এই ইমেইল(গুলো) দিয়ে লগইন করা যাবে (ছোট হাতের অক্ষরে লিখুন)
     ALLOWED_EMAILS: ['niloyghs2027@gmail.com'],
 
-    // কাজ না করলে এত মিনিট পর অটো লক হবে (0 = বন্ধ)
+    // কাজ না করলে এত মিনিট পর অটো লক হবে (0 = বন্ধ)। পেজ রিফ্রেশ করলেও এই সময় পর্যন্ত লগইন ধরে রাখা হয়
     IDLE_LOCK_MINUTES: 30,
+
+    // একবার লগইন করলে সর্বোচ্চ কত দিন পর্যন্ত রিফ্রেশে আবার লগইন চাইবে না (এরপর অবশ্যই নতুন করে লগইন)
+    REMEMBER_LOGIN_DAYS: 7,
+
+    // প্রোডাক্ট কি একবার দেওয়ার পর এই ডিভাইসে কত দিন মনে রাখবে
+    REMEMBER_PRODUCT_KEY_DAYS: 90,
 
     // পরিবর্তনের কত সেকেন্ড পর Drive-এ আপলোড শুরু হবে
     AUTO_BACKUP_DELAY_SEC: 3,
@@ -40,14 +47,20 @@
 
     /* ---------- কোড কপি/ইনস্পেক্ট প্রতিরোধ ---------- */
     PROTECT: {
-      ENABLED: true,
+      ENABLED: true,                // নিচের সবগুলো এখন বন্ধ (false)। দরকার হলে আলাদা আলাদা true করুন
       // শুধু এই ডোমেইনে অ্যাপ চলবে। যেমন: ['myschool.web.app']  ([] = সব ডোমেইন; localhost/127.0.0.1 সবসময় চলবে)
       ALLOWED_HOSTS: [],
-      BLOCK_CONTEXT_MENU: true,   // রাইট ক্লিক বন্ধ
-      BLOCK_COPY: true,           // ইনপুট বাদে অন্য জায়গায় কপি/সিলেক্ট/ড্র্যাগ বন্ধ
-      BLOCK_SHORTCUTS: true,      // F12, Ctrl+U, Ctrl+S, Ctrl+Shift+I/J/C বন্ধ
-      BLOCK_DEVTOOLS: true,       // ডেভেলপার টুলস খোলা থাকলে অ্যাপ ঢেকে দেবে (ডেস্কটপ)। নিজে ডিবাগ করতে false করুন
+      BLOCK_CONTEXT_MENU: false,  // রাইট ক্লিক বন্ধ
+      BLOCK_COPY: false,          // ইনপুট বাদে অন্য জায়গায় কপি/সিলেক্ট/ড্র্যাগ বন্ধ
+      BLOCK_SHORTCUTS: false,     // F12, Ctrl+U, Ctrl+S, Ctrl+Shift+I/J/C বন্ধ
+      BLOCK_DEVTOOLS: false,      // ডেভেলপার টুলস খোলা থাকলে অ্যাপ ঢেকে দেবে (ডেস্কটপ)
       BLOCK_IFRAME: true          // অন্য সাইটে iframe-এ বসিয়ে কপি করা বন্ধ
+    },
+
+    /* ---------- ক্রেডিট (হালকা, হাইলাইট ছাড়া) ---------- */
+    CREDIT: {
+      NAME_BN: 'নিলয়',
+      NAME_EN: 'Niloy'
     },
 
     DEBUG: false                  // true দিলে window.__SERP চালু হয় (শুধু আপনার টেস্টের জন্য)
@@ -62,7 +75,7 @@
   const ALL_STORES = ['settings'].concat(DATA_STORES);
   const KEYPATH = { settings: 'id', students: 'recordId', subjects: 'id', attendance: 'id', marks: 'id', qrattendance: 'id', fees: 'id' };
   const TOMB_KEEP_MS = 90 * 24 * 3600 * 1000;
-  const LS = { dirty: 'serp_sync_dirty_v2', mtime: 'serp_sync_mtime_v2', last: 'serp_sync_last_time', tomb: 'serp_tomb_v2', theme: 'serp_theme' };
+  const LS = { dirty: 'serp_sync_dirty_v2', mtime: 'serp_sync_mtime_v2', last: 'serp_sync_last_time', tomb: 'serp_tomb_v2', theme: 'serp_theme', sess: 'serp_sess_v1', act: 'serp_act_v1', gate: 'serp_gate_lock', credit: 'serp_credit_off' };
 
   const allowed = CONFIG.ALLOWED_EMAILS.map(e => String(e).trim().toLowerCase()).filter(Boolean);
   const configOK = CONFIG.CLIENT_ID && !/^YOUR_/.test(CONFIG.CLIENT_ID) && allowed.length && !allowed.some(e => /^your\./.test(e));
@@ -185,7 +198,15 @@
       #serp-modal h3{margin:0 0 8px;font-size:17px;font-weight:800}
       #serp-modal p{margin:0 0 14px;font-size:13.5px;line-height:1.65;white-space:pre-line}
       #serp-modal button{display:block;width:100%;margin-top:8px;padding:10px;border:0;border-radius:10px;font-weight:800;font-size:13.5px;cursor:pointer}
-      @media print{#serp-widget,#serp-auth,#serp-modal{display:none!important}}
+      #serp-widget{bottom:calc(12px + env(safe-area-inset-bottom,0px));left:calc(12px + env(safe-area-inset-left,0px))}
+      #serp-panel{max-width:calc(100vw - 32px)}
+      #serp-auth .card{max-height:calc(100vh - 32px);overflow-y:auto}
+      .serp-credit,.serp-credit-line{margin-top:10px;font-size:11px;color:#94a3b8;text-align:center;font-weight:500}
+      #serp-credit{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 8px 6px;font-size:11px;color:#94a3b8;text-align:center;flex-wrap:wrap}
+      #serp-credit img{width:36px;height:36px;border-radius:4px;opacity:.85;background:#fff;padding:2px}
+      body.serp-credit-off .serp-credit,body.serp-credit-off #serp-credit{display:none!important}
+      #serp-gate input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;border:1.5px solid #cbd5e1;font-size:16px;margin-bottom:10px;text-align:center;letter-spacing:.08em}
+      @media print{#serp-widget,#serp-auth,#serp-modal,#serp-gate,#serp-credit{display:none!important}}
     `;
     document.head.appendChild(st);
   }
@@ -377,6 +398,10 @@
         this.tokenClient.error_callback = e => reject(new Error((e && (e.message || e.type)) || 'popup_error'));
         const opts = { prompt: prompt };
         if (this.email) opts.hint = this.email; else if (allowed.length === 1) opts.hint = allowed[0];
+        const tm = setTimeout(() => reject(new Error('popup_timeout')), prompt === 'none' ? 12000 : 180000);
+        const done = fn => v => { clearTimeout(tm); fn(v); };
+        this.tokenClient.callback = r => (r && r.error) ? done(reject)(new Error(r.error_description || r.error)) : done(resolve)(r);
+        this.tokenClient.error_callback = e => done(reject)(new Error((e && (e.message || e.type)) || 'popup_error'));
         this.tokenClient.requestAccessToken(opts);
       });
 
@@ -445,6 +470,7 @@
           </button>
           <div class="msg" id="serp-msg"></div>
           <div class="foot">🔒 লগইনের পর আপনার সব তথ্য আপনার নিজের Google Drive-এ নিরাপদে সিঙ্ক হবে এবং লগইন করা সব ডিভাইসে আপডেট থাকবে।</div>
+          <div class="serp-credit">Developed by ${esc(CONFIG.CREDIT.NAME_EN)} (${esc(CONFIG.CREDIT.NAME_BN)})</div>
         </div>`;
       document.body.appendChild(el);
       const btn = $('#serp-login-btn', el);
@@ -787,6 +813,21 @@
       this.startPolling();
     },
 
+    /** রিফ্রেশের পর সেশন পুনরুদ্ধার হলে: অ্যাপ আগে লোকাল ডাটা দিয়ে খুলে যায়, সিঙ্ক ব্যাকগ্রাউন্ডে চলে */
+    async backgroundStart() {
+      this.enabled = true;
+      try { if (!(await localHasData())) lsDel(LS.mtime); } catch (e) { /* ignore */ }
+      this.startPolling();
+      this.cycle({ manual: true });
+      // টোকেন না থাকলে প্রথম ক্লিকেই (ইউজার-জেসচার) নীরব নবায়নের চেষ্টা — না হলে "পুনরায় সংযোগ" বোতাম থাকে
+      const once = () => {
+        document.removeEventListener('pointerdown', once, true);
+        if (!this.needAuth) return;
+        Auth.acquire('none').then(() => { this.needAuth = false; this.cycle({ manual: true }); }).catch(() => {});
+      };
+      document.addEventListener('pointerdown', once, true);
+    },
+
     /** নতুন শিক্ষার্থী/রশিদ তৈরির ঠিক আগে — অন্য ডিভাইসে একই আইডি/নম্বর তৈরি হওয়া ঠেকাতে */
     async pullNow() {
       if (!this.enabled || this.paused || this.needAuth || !navigator.onLine) return;
@@ -814,6 +855,7 @@
           <div class="row" id="serp-p-err" style="color:#be123c;display:none"></div>
           <button class="b1" id="serp-b-sync" type="button">⟳ এখনই সিঙ্ক করুন</button>
           <button class="b2" id="serp-b-restore" type="button">⬇ Drive থেকে সম্পূর্ণ রিস্টোর</button>
+          <button class="b3" id="serp-b-credit" type="button">©</button>
           <button class="b3" id="serp-b-logout" type="button">⎋ লগআউট</button>
           <button class="b4" id="serp-b-wipe" type="button">🧹 লগআউট ও এই ডিভাইস থেকে ডাটা মুছুন</button>
         </div>
@@ -848,6 +890,8 @@
           App.toast && App.toast('Drive থেকে ডাটা রিস্টোর হয়েছে!');
         } catch (e) { Sync.handleError(e); }
       };
+      $('#serp-b-credit', w).onclick = () => Credit.toggle();
+      Credit.label();
       $('#serp-b-logout', w).onclick = () => Session.logout(false);
       $('#serp-b-wipe', w).onclick = () => Session.logout(true);
       document.addEventListener('click', ev => { if (!w.contains(ev.target)) $('#serp-panel', w).classList.remove('open'); });
@@ -876,12 +920,37 @@
   const Session = {
     idleTimer: null,
     locked: false,
+    hadSession: false,
+    lastTouch: 0,
+
+    /** লগইন সফল হলে: এই ব্রাউজারে সেশন মনে রাখা (সর্বোচ্চ REMEMBER_LOGIN_DAYS দিন, নিষ্ক্রিয়তার সীমা IDLE_LOCK_MINUTES) */
+    remember() {
+      if (!Auth.email) return;
+      lsSet(LS.sess, JSON.stringify({ email: Auth.email, exp: Date.now() + CONFIG.REMEMBER_LOGIN_DAYS * 864e5, last: Date.now(), locked: false }));
+    },
+    /** রিফ্রেশের পর: সেশন বৈধ থাকলে ইমেইল ফেরত দেয়, নইলে null (তখন লগইন স্ক্রিন আসবে) */
+    restore() {
+      const s = jget(LS.sess, null);
+      this.hadSession = !!s;
+      if (!configOK || !s || !s.email || s.locked) return null;
+      if (!allowed.includes(String(s.email).toLowerCase())) return null;
+      if (!(CONFIG.REMEMBER_LOGIN_DAYS > 0) || Date.now() > Number(s.exp || 0)) return null;
+      if (CONFIG.IDLE_LOCK_MINUTES && Date.now() - Number(s.last || 0) > CONFIG.IDLE_LOCK_MINUTES * 60000) return null;
+      Auth.email = String(s.email).toLowerCase();
+      return Auth.email;
+    },
+    touch() {
+      const n = Date.now(); if (n - this.lastTouch < 10000) return; this.lastTouch = n;
+      const s = jget(LS.sess, null); if (!s || s.locked) return; s.last = n; lsSet(LS.sess, JSON.stringify(s));
+    },
+    setLocked(v) { const s = jget(LS.sess, null); if (!s) return; s.locked = !!v; lsSet(LS.sess, JSON.stringify(s)); },
+    forget() { lsDel(LS.sess); },
 
     startIdleWatch() {
       if (!CONFIG.IDLE_LOCK_MINUTES) return;
       let last = 0;
       const bump = () => {
-        const n = Date.now(); if (n - last < 1000) return; last = n;
+        const n = Date.now(); if (n - last < 1000) return; last = n; this.touch();
         clearTimeout(this.idleTimer);
         if (!this.locked) this.idleTimer = setTimeout(() => this.lock(), CONFIG.IDLE_LOCK_MINUTES * 60000);
       };
@@ -892,6 +961,7 @@
     async lock() {
       if (this.locked) return;
       this.locked = true;
+      this.setLocked(true);                // রিফ্রেশ দিয়েও লক এড়ানো যাবে না
       Sync.paused = true;
       if (Sync.isDirty() && !Sync.needAuth) { Sync.paused = false; try { await Sync.cycle(); } catch (e) { /* ignore */ } Sync.paused = true; }
       const prev = Auth.email;
@@ -900,6 +970,7 @@
       const w = $('#serp-widget'); if (w) w.style.display = 'none';
       await showLoginScreen('lock');
       this.locked = false;
+      this.remember();
       Sync.paused = false;
       Sync.needAuth = false;
       if (w) w.style.display = '';
@@ -922,12 +993,13 @@
         if (ok) ok = await Sync.cycle({ manual: true, force: !!wipe });
       }
       if (wipe && !ok) { Sync.setState('err', 'Drive-এ সেভ করা যায়নি'); App.toast && App.toast('Drive-এ সেভ করা যায়নি — তাই ডাটা মোছা হয়নি।', 'error'); return; }
+      this.forget();
       Sync.enabled = false;
       clearInterval(Sync.pollTimer);
       if (wipe) {
         try { App.db.db && App.db.db.close(); } catch (e) { /* ignore */ }
         await new Promise(res => { const r = indexedDB.deleteDatabase(DB_NAME); r.onsuccess = r.onerror = r.onblocked = () => res(); setTimeout(res, 1500); });
-        [LS.dirty, LS.mtime, LS.last, LS.tomb, LS.theme, 'serp_legacy_done'].forEach(lsDel);
+        [LS.dirty, LS.mtime, LS.last, LS.tomb, LS.theme, LS.act, 'serp_legacy_done'].forEach(lsDel);
       }
       try { if (Auth.token) google.accounts.oauth2.revoke(Auth.token, () => {}); } catch (e) { /* ignore */ }
       Auth.clear();
@@ -947,6 +1019,121 @@
   window.addEventListener('focus', () => { if (Sync.enabled) Sync.cycle({ poll: true }); });
 
   /* ======================= App.init কে লগইনের পেছনে আটকে দেওয়া ======================= */
+  /* ====================================================================================
+   *  ক্রেডিট (ছোট ও হালকা) — চাইলে প্যানেলের "©" বোতামে বন্ধ/চালু করা যায়
+   * ==================================================================================== */
+  const Credit = {
+    off() { return lsGet(LS.credit) === '1'; },
+    apply() { document.body.classList.toggle('serp-credit-off', this.off()); },
+    label() { const b = $('#serp-b-credit'); if (b) b.textContent = this.off() ? '© ক্রেডিট দেখান' : '© ক্রেডিট লুকান'; },
+    toggle() { if (this.off()) lsDel(LS.credit); else lsSet(LS.credit, '1'); this.apply(); this.label(); },
+    mount() {
+      if ($('#serp-credit')) return;
+      const host = $('main') || document.body;
+      const d = document.createElement('div');
+      d.id = 'serp-credit'; d.className = 'no-print';
+      let qr = '';
+      try { qr = (App.generateQRDataURL && App.generateQRDataURL(CONFIG.CREDIT.NAME_EN, 120)) || ''; } catch (e) { qr = ''; }
+      d.innerHTML = (qr ? `<img alt="${esc(CONFIG.CREDIT.NAME_EN)}" src="${qr}">` : '') +
+        `<span>সফটওয়্যার ডিজাইন ও ডেভেলপমেন্ট: <b>${esc(CONFIG.CREDIT.NAME_BN)}</b> (${esc(CONFIG.CREDIT.NAME_EN)})</span>`;
+      host.appendChild(d);
+      this.apply();
+    }
+  };
+
+  /* ====================================================================================
+   *  প্রোডাক্ট কি (সিক্রেট পিন)
+   *  - কি টি কোথাও লেখা নেই। এর বদলে অ্যাপের মূল কিছু ফাংশন (গ্রেডিং/বিষয় লজিক) AES-256-GCM দিয়ে
+   *    এনক্রিপ্ট করে তিনটি ফাইলে ভেঙে রাখা হয়েছে: index.html, app.js, secure-login.js।
+   *  - সঠিক কি দিলে তবেই ডিক্রিপ্ট হয়ে অ্যাপে বসে। ভুল কি/কোনো একটি ফাইল না থাকলে অ্যাপ চলবে না।
+   * ==================================================================================== */
+  const NK3 = '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';
+  const Gate = {
+    installed: false,
+    b64(str) { return Uint8Array.from(atob(str), c => c.charCodeAt(0)); },
+    toB64(u8) { let s = ''; u8.forEach(b => { s += String.fromCharCode(b); }); return btoa(s); },
+    blob() {
+      const m = document.querySelector('meta[name="build-ref"]');
+      const p1 = (m && m.getAttribute('content')) || '';
+      let p2 = ''; try { p2 = (typeof __NK2 === 'string') ? __NK2 : ''; } catch (e) { p2 = ''; }
+      return p1 + p2 + NK3;
+    },
+    async deriveRaw(pw, salt) {
+      const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+      return new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 200000, hash: 'SHA-256' }, km, 256));
+    },
+    async open(raw) {
+      const buf = this.b64(this.blob());
+      const iv = buf.slice(16, 28), ct = buf.slice(28);
+      const key = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+      return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct));
+    },
+    install(code) {
+      const fns = (new Function('return (' + code + ')'))();
+      Object.assign(App, fns);
+      this.installed = true;
+    },
+    async unlockStored() {
+      const a = jget(LS.act, null);
+      if (!a || !a.k || Date.now() > Number(a.exp || 0)) { lsDel(LS.act); return false; }
+      try { this.install(await this.open(this.b64(a.k))); return true; } catch (e) { lsDel(LS.act); return false; }
+    },
+    async unlockWith(pw) {
+      const salt = this.b64(this.blob()).slice(0, 16);
+      const raw = await this.deriveRaw(pw, salt);
+      const code = await this.open(raw);                    // ভুল কি হলে এখানেই এরর
+      this.install(code);
+      lsSet(LS.act, JSON.stringify({ k: this.toB64(raw), exp: Date.now() + CONFIG.REMEMBER_PRODUCT_KEY_DAYS * 864e5 }));
+    },
+    screen() {
+      return new Promise(resolve => {
+        injectStyle();
+        const el = document.createElement('div');
+        el.id = 'serp-gate';
+        el.style.cssText = 'position:fixed;inset:0;z-index:2147483100;display:flex;align-items:center;justify-content:center;padding:16px;background:linear-gradient(135deg,#1e3a8a 0%,#312e81 55%,#115e59 100%);font-family:\'Noto Sans Bengali\',\'Hind Siliguri\',sans-serif';
+        el.innerHTML = `
+          <div style="width:100%;max-width:400px;background:#fff;color:#0f172a;border-radius:20px;padding:26px 22px;box-shadow:0 30px 70px -15px rgba(0,0,0,.55);text-align:center">
+            <div style="font-size:34px;margin-bottom:6px">🔑</div>
+            <h1 style="font-size:18px;font-weight:800;margin:0 0 4px">প্রোডাক্ট কি দিন</h1>
+            <p style="font-size:13px;color:#475569;margin:0 0 14px;line-height:1.6">এই সফটওয়্যার চালু করতে সিক্রেট প্রোডাক্ট কি (পিন) প্রয়োজন।</p>
+            <input id="serp-gate-in" type="password" autocomplete="off" placeholder="প্রোডাক্ট কি" />
+            <button id="serp-gate-go" type="button" style="width:100%;padding:12px;border:0;border-radius:12px;background:#1d4ed8;color:#fff;font-weight:800;font-size:14px;cursor:pointer">চালু করুন</button>
+            <div id="serp-gate-msg" style="margin-top:12px;font-size:13px;color:#9f1239;white-space:pre-line;min-height:18px"></div>
+            <div class="serp-credit">Developed by ${esc(CONFIG.CREDIT.NAME_EN)} (${esc(CONFIG.CREDIT.NAME_BN)})</div>
+          </div>`;
+        document.body.appendChild(el);
+        const inp = $('#serp-gate-in', el), go = $('#serp-gate-go', el), msg = $('#serp-gate-msg', el);
+        setTimeout(() => inp.focus(), 50);
+        const submit = async () => {
+          const lock = jget(LS.gate, { n: 0, until: 0 });
+          if (Date.now() < lock.until) { msg.textContent = `অনেকবার ভুল! ${Math.ceil((lock.until - Date.now()) / 1000)} সেকেন্ড পর আবার চেষ্টা করুন।`; return; }
+          const v = inp.value;
+          if (!v) { msg.textContent = 'প্রোডাক্ট কি লিখুন।'; return; }
+          go.disabled = true; msg.style.color = '#075985'; msg.textContent = 'যাচাই হচ্ছে…';
+          try {
+            await this.unlockWith(v);
+            lsDel(LS.gate); el.remove(); resolve();
+          } catch (e) {
+            go.disabled = false; msg.style.color = '#9f1239';
+            const n = (lock.n || 0) + 1;
+            lsSet(LS.gate, JSON.stringify({ n: n >= 5 ? 0 : n, until: n >= 5 ? Date.now() + 60000 : 0 }));
+            msg.textContent = this.blob().length < 64 ? 'অ্যাপের ফাইল অসম্পূর্ণ (তিনটি ফাইলই একসাথে আপলোড করুন)।' : (n >= 5 ? 'অনেকবার ভুল! ১ মিনিট অপেক্ষা করুন।' : 'ভুল প্রোডাক্ট কি। আবার চেষ্টা করুন।');
+            inp.value = ''; inp.focus();
+          }
+        };
+        go.onclick = submit;
+        inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') submit(); });
+      });
+    },
+    async run() {
+      if (this.installed) return;
+      if (!(window.crypto && crypto.subtle)) throw new Error('প্রোডাক্ট কি যাচাইয়ের জন্য HTTPS (নিরাপদ সংযোগ) প্রয়োজন।');
+      if (await this.unlockStored()) return;
+      await this.screen();
+    }
+  };
+
+  /* ======================= App.init কে প্রোডাক্ট কি ও লগইনের পেছনে আটকে দেওয়া ======================= */
   const originalInit = App.init;
   let started = false;
   App.syncBeforeWrite = () => Sync.pullNow();
@@ -954,14 +1141,28 @@
     if (started) return;
     started = true;
     injectStyle();
+    Credit.apply();
     try {
-      await showLoginScreen('login');         // লগইন না হলে এখানেই আটকে থাকবে — অ্যাপ লোডই হবে না
-      await Sync.initialSync();                // Drive ↔ লোকাল মার্জ / নতুন ডিভাইসে রিস্টোর
-      await originalInit.apply(App, arguments);
-      Sync.appReady = true;
-      UI.mount();
-      UI.refresh();
-      Session.startIdleWatch();
+      await Gate.run();                                   // ১) প্রোডাক্ট কি (একবার দিলে এই ডিভাইসে মনে থাকে)
+      const restored = Session.restore();                // ২) রিফ্রেশে বৈধ সেশন থাকলে আবার লগইন লাগবে না
+      if (!restored) {
+        await showLoginScreen(Session.hadSession ? 'lock' : 'login');
+        Session.remember();
+      }
+      if (restored) {
+        Sync.enabled = true;
+        await originalInit.apply(App, arguments);         // লোকাল ডাটা দিয়ে সাথে সাথে খুলে যায়
+        Sync.appReady = true;
+        UI.mount(); UI.refresh(); Credit.mount();
+        Session.startIdleWatch();
+        Sync.backgroundStart();                            // সিঙ্ক ব্যাকগ্রাউন্ডে
+      } else {
+        await Sync.initialSync();                          // Drive ↔ লোকাল মার্জ / নতুন ডিভাইসে রিস্টোর
+        await originalInit.apply(App, arguments);
+        Sync.appReady = true;
+        UI.mount(); UI.refresh(); Credit.mount();
+        Session.startIdleWatch();
+      }
     } catch (e) {
       console.error(e);
       document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;z-index:2147483600;background:#fff;color:#be123c;padding:24px;font:600 15px sans-serif">অ্যাপ চালু করতে সমস্যা হয়েছে: ' + esc(e && e.message) + '<br><br><button onclick="location.reload()">আবার চেষ্টা করুন</button></div>');

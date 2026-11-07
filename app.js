@@ -2,9 +2,13 @@
  * ============================================================================
  * SMART SCHOOL ERP & RESULT PROCESSING SYSTEM v5.0 PRO (FIXED EDITION)
  * FILE: app.js (PART 1 OF 3) — v5.1 SECURE/REALTIME EDITION
+ * Software design & development: Niloy (নিলয়)
  * Core DB, NCTB Separate Papers (Bangla/English 1st & 2nd), Auto-Sync & Students
  * ============================================================================
  */
+
+/* build-ref (part 2) */
+const __NK2 = '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';
 
 const DB_NAME = 'SchoolERP_BD_v5';
 const DB_VERSION = 3;
@@ -253,21 +257,7 @@ const App = {
    * ফিক্সড ফাংশন: নির্দিষ্ট শ্রেণী ও বিভাগের জন্য প্রযোজ্য সকল বিষয়ের তালিকা রিটার্ন করে
    * (এই ফাংশনটি আগের ফাইলে মিসিং থাকায় পুরো অ্যাপ ক্র্যাশ করছিল)
    */
-  getSubjectsForClassGroup(cls, grp) {
-    const c = String(cls || '6').trim();
-    const g = String(grp || (['6', '7', '8'].includes(c) ? 'General' : 'Science')).trim();
-
-    return this.subjects
-      .filter(sub => {
-        if (!Array.isArray(sub.classes) || !sub.classes.includes(c)) return false;
-        if (['6', '7', '8'].includes(c)) {
-          return sub.group === 'General' || sub.group === 'ALL';
-        }
-        if (g === 'ALL') return true;
-        return sub.group === 'ALL' || sub.group === g;
-      })
-      .sort((a, b) => Number(a.code) - Number(b.code));
-  },
+  /* (এই ফাংশনটি প্রোডাক্ট কি দিয়ে এনক্রিপ্টেড — secure-login.js চালুর সময় বসে) */
 
   /**
    * রিয়েল-টাইম অটো-সিঙ্ক ইঞ্জিন
@@ -863,30 +853,7 @@ const App = {
     }
   },
 
-  getEffectiveSubjectsForStudent(stu) {
-    const allGroupSubs = this.getSubjectsForClassGroup(stu.cls, stu.group);
-    if (['6','7','8'].includes(stu.cls)) {
-      return allGroupSubs;
-    }
-
-    const optCode = String(stu.optionalSubject || '').trim();
-    if (stu.group === 'Science') {
-      let mainElec = String(stu.mainElective || '').trim();
-      if (!mainElec) {
-        mainElec = (optCode === '138') ? '126' : '138';
-      }
-      return allGroupSubs.filter(sub => {
-        if (!sub.isOptionalAllowed) return true;
-        return sub.code === mainElec || sub.code === optCode;
-      });
-    } else {
-      const effectiveOpt = optCode || '134';
-      return allGroupSubs.filter(sub => {
-        if (!sub.isOptionalAllowed) return true;
-        return sub.code === effectiveOpt;
-      });
-    }
-  },
+  /* (এই ফাংশনটি প্রোডাক্ট কি দিয়ে এনক্রিপ্টেড — secure-login.js চালুর সময় বসে) */
 
   getStudentsTakingSubject(cls, grp, sub) {
     const list = this.getFilteredStudents(cls, grp);
@@ -1840,12 +1807,7 @@ Object.assign(App, {
   },
 
   /* ==================== MODULE 6: 4-STEP SUBJECT & MARK ENTRY ==================== */
-  getPassMarkLimit(maxMark) {
-    const m = Number(maxMark || 0);
-    if (!Number.isFinite(m) || m <= 0) return 0;
-    // বোর্ড স্ট্যান্ডার্ড: ১০০→৩৩, ৭০→২৩, ৫০→১৭, ৩০→১০, ২৫→৮ (পূর্ণসংখ্যা গণিতে — ফ্লোটিং-পয়েন্ট ভুল এড়াতে)
-    return Math.round((m * 33) / 100);
-  },
+  /* (এই ফাংশনটি প্রোডাক্ট কি দিয়ে এনক্রিপ্টেড — secure-login.js চালুর সময় বসে) */
 
   switchMarkSubTab(sub) {
     ['blank','bulk','single','config'].forEach(k => {
@@ -2572,68 +2534,15 @@ Object.assign(App, {
    * standalone = false (ডিফল্ট) হলে বাংলা/ইংরেজির ১ম/২য় পত্র "পত্র-পর্যায়" ফলাফল পায় (ফেল ধরা হয় না);
    * কারণ এই দুই বিষয়ে পাস-ফেল দুই পত্র মিলিয়ে (evaluatePairCombined) নির্ধারিত হয়।
    */
-  evaluateSubjectMark(sub, cqVal, mcqVal, pracVal, standalone = false) {
-    const sCq = this._n(sub.cq), sMcq = this._n(sub.mcq), sPrac = this._n(sub.prac);
-    const fullMarks = (sCq + sMcq + sPrac) || 100;
-    const cq = Math.min(sCq, this._n(cqVal));
-    const mcq = Math.min(sMcq, this._n(mcqVal));
-    const prac = Math.min(sPrac, this._n(pracVal));
-    const total = cq + mcq + prac;
-    const pct = (total * 100) / fullMarks;
-
-    const cqPass = sCq === 0 || cq >= this.getPassMarkLimit(sCq);
-    const mcqPass = sMcq === 0 || mcq >= this.getPassMarkLimit(sMcq);
-    const pracPass = sPrac === 0 || prac >= this.getPassMarkLimit(sPrac);
-    const base = { cq, mcq, prac, total, fullMarks, pct };
-
-    // বাংলা/ইংরেজি পত্র: পত্র-পর্যায়ে ফেল নয় — সমন্বিত ফলাফল computeClassResults / getPairStatusForEntry-তে
-    if (sub.pairGroup && !standalone) {
-      const g = this.pctToGPAndGrade(pct, true);
-      return { ...base, gp: g.gp, lg: g.lg, passed: true, isPaper: true,
-               cqPass: true, mcqPass: true, pracPass: true, failReason: '' };
-    }
-
-    const failedParts = [];
-    if (!cqPass) failedParts.push('লিখিত');
-    if (!mcqPass) failedParts.push('MCQ');
-    if (!pracPass) failedParts.push('প্র্যাকটিক্যাল');
-
-    // সব অংশে পাস না হলে F; বিষয়ের মোট পূর্ণমান শূন্য হলে (ভুল কনফিগ) ৩৩% শর্তে যাচাই
-    const degenerate = (sCq + sMcq + sPrac) === 0;
-    const passed = !degenerate ? (cqPass && mcqPass && pracPass) : pct >= 33;
-
-    if (!passed) {
-      return { ...base, gp: 0.00, lg: 'F', passed: false, cqPass, mcqPass, pracPass,
-               failReason: failedParts.length ? failedParts.join('+') : '<33%' };
-    }
-    // সব অংশে পাস করলে ন্যূনতম D (যেমন ICT ২৫+২৫: ৮+৮=১৬/৫০ = ৩২% হলেও অংশভিত্তিক পাস → D)
-    const g = this.pctToGPAndGrade(pct, true);
-    return { ...base, gp: g.gp, lg: g.lg, passed: true, cqPass, mcqPass, pracPass, failReason: '' };
-  },
+  /* (এই ফাংশনটি প্রোডাক্ট কি দিয়ে এনক্রিপ্টেড — secure-login.js চালুর সময় বসে) */
 
   /**
    * শতকরা → GP/Grade। passed=false হলে সবসময় F।
    * passed=true হলে ন্যূনতম D (১.০০) — পাস/ফেলের সিদ্ধান্ত কলারের (অংশভিত্তিক বা সমন্বিত নিয়মে)।
    */
-  pctToGPAndGrade(pct, passed = true) {
-    if (!passed) return { gp: 0.00, lg: 'F' };
-    if (pct >= 80) return { gp: 5.00, lg: 'A+' };
-    if (pct >= 70) return { gp: 4.00, lg: 'A' };
-    if (pct >= 60) return { gp: 3.50, lg: 'A-' };
-    if (pct >= 50) return { gp: 3.00, lg: 'B' };
-    if (pct >= 40) return { gp: 2.00, lg: 'C' };
-    return { gp: 1.00, lg: 'D' };
-  },
+  /* (এই ফাংশনটি প্রোডাক্ট কি দিয়ে এনক্রিপ্টেড — secure-login.js চালুর সময় বসে) */
 
-  gpToLetterGrade(gpa) {
-    if (gpa >= 5.00) return 'A+';
-    if (gpa >= 4.00) return 'A';
-    if (gpa >= 3.50) return 'A-';
-    if (gpa >= 3.00) return 'B';
-    if (gpa >= 2.00) return 'C';
-    if (gpa >= 1.00) return 'D';
-    return 'F';
-  },
+  /* (এই ফাংশনটি প্রোডাক্ট কি দিয়ে এনক্রিপ্টেড — secure-login.js চালুর সময় বসে) */
 
   getPerformanceRemarkBn(gpa, passed) {
     if (!passed) return 'অকৃতকার্য — বিশেষ যত্ন ও অধিক মনোযোগ প্রয়োজন';
@@ -5576,6 +5485,12 @@ Object.assign(App, {
 })();
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { App.closeMarksheetPreview(); App.closeQuickMarkModal(); }
+});
+// মোবাইল/ট্যাবলেটে মেনু খোলা থাকলে বাইরে ট্যাপ করলে বন্ধ হবে (শুধু ছোট স্ক্রিনে)
+document.addEventListener('click', (e) => {
+  if (window.innerWidth >= 1024 || document.body.classList.contains('sidebar-collapsed')) return;
+  if (e.target.closest('#app-sidebar') || e.target.closest('[onclick*="toggleSidebar"]')) return;
+  document.body.classList.add('sidebar-collapsed');
 });
 window.addEventListener('DOMContentLoaded', () => {
   if (window.innerWidth < 1024) document.body.classList.add('sidebar-collapsed');
