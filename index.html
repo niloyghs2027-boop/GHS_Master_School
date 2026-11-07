@@ -253,9 +253,16 @@
     @media print {
       html, body {
         background: #ffffff !important;
-        color: #0f172a !important;
+        color: #0f172a00 !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+      }
+      /* মোবাইল সাইডবারের কালো পর্দা (body::before) প্রিন্টে আসা বন্ধ — এটাই প্রিন্ট পেজ কালচে/ঘোলাটে করছিল */
+      body::before,
+      body:not(.sidebar-collapsed)::before {
+        content: none !important;
+        display: none !important;
+        background: none !important;
       }
       .no-print {
         display: none !important;
