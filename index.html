@@ -641,6 +641,8 @@
       /* মেনু খোলা থাকলে পেছনে হালকা পর্দা — বাইরে ট্যাপ করলে বন্ধ হয় (app.js) */
       body:not(.sidebar-collapsed)::before{content:'';position:fixed;inset:0;background:rgba(2,6,23,.5);z-index:44}
       .royal-sidebar{max-width:86vw}
+      /* ফিক্স: Tailwind-এর .z-30 এই z-index কে ছাপিয়ে যেত, ফলে পর্দা (z-44) মেনুর ওপরে উঠে ক্লিক আটকে দিত */
+      #app-sidebar.royal-sidebar{z-index:45!important}
       main{padding:12px!important}
     }
     @media (max-width:767px){

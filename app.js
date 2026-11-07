@@ -5607,3 +5607,23 @@ window.addEventListener('DOMContentLoaded', () => {
   if (window.innerWidth < 1024) document.body.classList.add('sidebar-collapsed');
   App.init();
 });
+
+// প্রিন্টের সময় ডার্ক মোড সাময়িকভাবে বন্ধ — ডার্ক থিমে প্রিন্ট পেজ কালো আসা ঠিক করার জন্য
+(function () {
+  let wasDark = false;
+  function printLight() {
+    const html = document.documentElement;
+    if (html.classList.contains('dark')) { wasDark = true; html.classList.remove('dark'); }
+  }
+  function restoreTheme() {
+    if (wasDark) { wasDark = false; document.documentElement.classList.add('dark'); }
+  }
+  window.addEventListener('beforeprint', printLight);
+  window.addEventListener('afterprint', restoreTheme);
+  if (window.matchMedia) {
+    const mq = window.matchMedia('print');
+    const onChange = (e) => { if (e.matches) printLight(); else restoreTheme(); };
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+    else if (mq.addListener) mq.addListener(onChange);
+  }
+})();
